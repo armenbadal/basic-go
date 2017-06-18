@@ -30,10 +30,6 @@ func NewText(val string) *Value {
 }
 
 
-// Կատարման միջավայր
-type Environment map[string]*Value
-
-
 // Արտահայտություններ
 type Expression interface {
 	evaluate(Environment) *Value
@@ -113,6 +109,10 @@ func NewApply(cl *Subroutine, ags *list.List) *Apply {
 	return &Apply{callee: cl, arguments: ags}
 }
 
+//
+func (a *Apply) SetCallee(sb *Subroutine) {
+	a.callee = sb
+}
 
 // Հրամաններ
 type Statement interface {
@@ -216,6 +216,10 @@ func NewCall(cl *Subroutine, ags *list.List) *Call {
 	return &Call{callee: cl, arguments: ags}
 }
 
+//
+func (c *Call) SetCallee(sb *Subroutine) {
+	c.callee = sb
+}
 
 // Հրամանների հաջորդականություն
 type Sequence struct {
@@ -250,17 +254,17 @@ func NewSubroutine(nm string, pars *list.List, dy Statement) *Subroutine {
 
 // Ծրագիր
 type Program struct {
-	Members map[string]*Subroutine
+	members map[string]*Subroutine
 }
 
 //
 func NewProgram() *Program {
-	return &Program{Members: make(map[string]*Subroutine)}
+	return &Program{members: make(map[string]*Subroutine)}
 }
 
 //
 func (p *Program) AddMember(su *Subroutine) {
-	p.Members[su.name] = su
+	p.members[su.name] = su
 }
 
 

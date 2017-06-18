@@ -10,16 +10,18 @@ import (
 )
 
 
-// վերլուծվող ծրագրի «գլոբալ» ցուցիչ
-var progr *engine.Program
+// վերլուծված ենթածրագրերի «գլոբալ» ցուցակ
+var subrs = map[string]*engine.Subroutine{}
 // անհայտ ենթածրագրիերի կանչերի ցուցակ
-var clinks map[string]*list.List
+var clinks = map[string]*list.List{}
 
 
 // Շարահյուսական վերլուծիչի ստրուկտուրան։
 type Parser struct {
 	scer *scanner
 	lookahead *lexeme
+
+	program *engine.Program
 }
 
 // Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -39,6 +41,8 @@ func NewParser(filename string) *Parser {
 	pars.scer.read()
 	pars.lookahead = pars.scer.next()
 
+	pars.program = engine.NewProgram()
+	
 	return pars
 }
 
@@ -55,7 +59,7 @@ func (p *Parser) Parse() *engine.Program {
 
 	// վերլուծել ծրագիրը
 	p.parseProgram()
-	return progr
+	return p.program
 }
 
 // Վերլուծել ամբողջ ծրագիրը.
@@ -70,7 +74,7 @@ func (p *Parser) parseProgram() {
 
 	for p.has(xSubroutine) {
 		p0 := p.parseSubroutine()
-		progr.AddMember(p0)
+		p.program.AddMember(p0)
 		p.parseNewLines()
 	}
 }
@@ -114,7 +118,23 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 	body := p.parseSequence()
 	p.match(xEnd)
 	p.match(xSubroutine)
-	return engine.NewSubroutine(name, pars, body)
+
+	sub := engine.NewSubroutine(name, pars, body)
+	subrs[name] = sub
+
+	if clinks[name] != nil {
+		for e := clinks[name].Front(); e != nil; e = e.Next() {
+			switch coa := e.Value.(type) {
+			case engine.Call:
+				coa.SetCallee(sub)
+			case engine.Apply:
+				coa.SetCallee(sub)
+			}
+		}
+		delete(clinks, name)
+	}
+	
+	return sub
 }
 
 // Վերլուծել հրամանների հաջորդականություն
@@ -287,9 +307,9 @@ func (p *Parser) parseCall() engine.Statement {
 	}
 
 	
-	subrp, defined := progr.Members[name]
+	sp, defined := subrs[name]
 	if defined {
-		return engine.NewCall(subrp, args)
+		return engine.NewCall(sp, args)
 	}
 
 	dummy := engine.NewSubroutine("__dummy__", list.New(), nil)

@@ -5,6 +5,10 @@ import (
 	"container/list"
 )
 
+
+// Կատարման միջավայր
+type Environment map[string]*Value
+
 //
 func (e *Value) evaluate(env Environment) *Value {
 	return e
@@ -103,7 +107,7 @@ func (s *Sequence) execute(env Environment) {
 
 // Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func (p *Program) Execute() {
-	ep, found := p.Members["Main"]
+	ep, found := p.members["Main"]
 	if found {
 		entry := NewCall(ep, list.New())
 		entry.execute(make(Environment))
