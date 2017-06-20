@@ -327,7 +327,7 @@ func (p *Parser) parseExpression() engine.Expression {
 	for p.has(xOr) {
 		p.match(xOr)
 		e0 := p.parseConjunction()
-		res = engine.NewBinary(engine.OR, res, e0)
+		res = engine.NewBinary(engine.Or, res, e0)
 	}
 	return res
 }
@@ -338,7 +338,7 @@ func (p *Parser) parseConjunction() engine.Expression {
 	for p.has(xAnd) {
 		p.match(xAnd)
 		e0 := p.parseEquality()
-		res = engine.NewBinary(engine.AND, res, e0)
+		res = engine.NewBinary(engine.And, res, e0)
 	}
 	return res
 }
@@ -347,13 +347,13 @@ func (p *Parser) parseConjunction() engine.Expression {
 func (p *Parser) parseEquality() engine.Expression {
 	res := p.parseComparison()
 	if p.has(xEq, xNe) {
-		var opc int
+		var opc engine.BinOper
 		switch p.lookahead.token {
 		case xEq:
-			opc = engine.EQ
+			opc = engine.Eq
 			p.match(xEq)
 		case xNe:
-			opc = engine.NE
+			opc = engine.Ne
 			p.match(xNe)
 		}
 		e0 := p.parseComparison()
@@ -366,19 +366,19 @@ func (p *Parser) parseEquality() engine.Expression {
 func (p *Parser) parseComparison() engine.Expression {
 	res := p.parseAddition()
 	if p.has(xGt, xGe, xLt, xLe) {
-		var opc int
+		var opc engine.BinOper
 		switch p.lookahead.token {
 		case xGt:
-			opc = engine.GT
+			opc = engine.Gt
 			p.match(xGt)
 		case xGe:
-			opc = engine.GE
+			opc = engine.Ge
 			p.match(xGe)
 		case xLt:
-			opc = engine.LT
+			opc = engine.Lt
 			p.match(xLt)
 		case xLe:
-			opc = engine.LE
+			opc = engine.Le
 			p.match(xLe)
 		}
 		e0 := p.parseAddition()
@@ -391,16 +391,16 @@ func (p *Parser) parseComparison() engine.Expression {
 func (p *Parser) parseAddition() engine.Expression {
 	res := p.parseMultiplication()
 	for p.has(xAdd, xSub, xAmp) {
-		var opc int
+		var opc engine.BinOper
 		switch p.lookahead.token {
 		case xAdd:
-			opc = engine.ADD
+			opc = engine.Add
 			p.match(xAdd)
 		case xSub:
-			opc = engine.SUB
+			opc = engine.Sub
 			p.match(xSub)
 		case xAmp:
-			opc = engine.CONC
+			opc = engine.Conc
 			p.match(xAmp)
 		}
 		e0 := p.parseMultiplication()
@@ -413,16 +413,16 @@ func (p *Parser) parseAddition() engine.Expression {
 func (p *Parser) parseMultiplication() engine.Expression {
 	res := p.parsePower()
 	for p.has(xMul, xDiv, xMod) {
-		var opc int
+		var opc engine.BinOper
 		switch p.lookahead.token {
 		case xMul:
-			opc = engine.MUL
+			opc = engine.Mul
 			p.match(xMul)
 		case xDiv:
-			opc = engine.DIV
+			opc = engine.Div
 			p.match(xDiv)
 		case xMod:
-			opc = engine.MOD
+			opc = engine.Mod
 			p.match(xMod)
 		}
 		e0 := p.parsePower()
@@ -440,7 +440,7 @@ func (p *Parser) parsePower() engine.Expression {
 	if p.has(xPow) {
 		p.match(xPow)
 		e0 := p.parsePower()
-		res = engine.NewBinary(engine.POW, res, e0)
+		res = engine.NewBinary(engine.Pow, res, e0)
 	}
 	return res
 }
@@ -488,17 +488,18 @@ func (p *Parser) parseFactor() engine.Expression {
 	}
 
 	if p.has(xSub, xNot) {
-		var opc int
+		var opc engine.UnOper
 		switch p.lookahead.token {
 		case xSub:
-			opc = engine.NEG
+			opc = engine.Neg
 			p.match(xSub)
 		case xNot:
-			opc = engine.NOT
+			opc = engine.Not
 			p.match(xNot)
 		}
 		res := p.parseFactor()
 		res = engine.NewUnary(opc, res)
+		////res.Type = engine.T_NUMBER
 		return res
 	}
 

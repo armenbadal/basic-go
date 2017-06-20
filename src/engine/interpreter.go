@@ -23,42 +23,24 @@ func (e *Variable) evaluate(env Environment) *Value {
 //
 func (e *Unary) evaluate(env Environment) *Value {
 	res := e.expr.evaluate(env)
-	if e.opcode == NEG {
-		res = NewNumber(-res.number)
-	} else if e.opcode == NOT {
-		if res.number == 0 {
-			res = NewNumber(1.0)
-		} else {
-			res = NewNumber(0.0)
-		}
-	}
+	// if e.opcode == NEG {
+	// 	res = NewNumber(-res.number)
+	// } else if e.opcode == NOT {
+	// 	if res.number == 0 {
+	// 		res = NewNumber(1.0)
+	// 	} else {
+	// 		res = NewNumber(0.0)
+	// 	}
+	// }
 	return res
 }
 
 //
 func (e *Binary) evaluate(env Environment) *Value {
-	evo := e.expro.evaluate(env)
-	evi := e.expri.evaluate(env)
-
-	var res *Value
-	switch e.opcode {
-	case ADD:
-		res = NewNumber(evo.number + evi.number)
-	case SUB:
-		res = NewNumber(evo.number - evi.number)
-//	case CONC:
-//		res = NewNumber(evo.number + evi.number)
-	case MUL:
-		res = NewNumber(evo.number * evi.number)
-	case DIV:
-		res = NewNumber(evo.number / evi.number)
-//	case MOD:
-//		res = NewNumber(evo.number + evi.number)
-//	case POW:
-//		res = NewNumber(evo.number + evi.number)		
-	}
-	
-	return res
+	//evo := e.expro.evaluate(env)
+	//evi := e.expri.evaluate(env)
+	///return e.opfun(evo, evi)
+	return nil
 }
 
 //

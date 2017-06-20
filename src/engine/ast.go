@@ -3,30 +3,30 @@ package engine
 
 import (
 	"container/list"
+	"strings"
 )
 
-// Աբստրակտ քերականական ծառի հանգույց
-type node struct {
-	line int
-}
-
+// Երկու բազային տիպեր
+const (
+	T_NUMBER = 'N'
+	T_TEXT = 'T'
+)
 
 // Ունիվերսալ արժեք
 type Value struct {
-	node
-	kind rune
+	Type rune
 	number float64
 	text string
 }
 
 // Նոր թվային օբյեկտ
 func NewNumber(val float64) *Value {
-	return &Value{kind: 'N', number: val}
+	return &Value{Type: 'N', number: val}
 }
 
 // Նոր տեքստային օբյեկտ
 func NewText(val string) *Value {
-	return &Value{kind: 'T', text: val}
+	return &Value{Type: 'T', text: val}
 }
 
 
@@ -37,69 +37,51 @@ type Expression interface {
 
 //
 type Variable struct {
-	node
+	Type rune
 	name string
 }
 
 //
 func NewVariable(nm string) *Variable {
-	return &Variable{name: nm}
+	yp := 'V'
+	if strings.HasSuffix(nm, "$") {
+		yp = 'T'
+	} else {
+		yp = 'N'
+	}
+	return &Variable{Type: yp, name: nm}
 }
-
-// Գործողություններ
-const (
-	NEG = iota
-	ADD
-	SUB
-	CONC
-	MUL
-	DIV
-	MOD
-	POW
-
-	EQ
-	NE
-	GT
-	GE
-	LT
-	LE
-
-	AND
-	OR
-	NOT
-)
 
 
 // Ունար գործողություն
 type Unary struct {
-	node
-	opcode int
+	Type rune
+	opfun func(x *Value) *Value
 	expr Expression
 }
 
 //
-func NewUnary(op int, eo Expression) *Unary {
-	return &Unary{opcode: op, expr: eo}
+func NewUnary(op func(x *Value) *Value, eo Expression) *Unary {
+	return &Unary{opfun: op, expr: eo}
 }
 
 
 // Բինար գործողություն
 type Binary struct {
-	node
-	opcode int
-	expro Expression
-	expri Expression
+	Type rune
+	opfun func(x, y *Value) *Value
+	expro, expri Expression
 }
 
 //
-func NewBinary(op int, exo, exi Expression) *Binary {
-	return &Binary{opcode: op, expro: exo, expri: exi}
+func NewBinary(op func(x, y *Value) *Value, exo, exi Expression) *Binary {
+	return &Binary{opfun: op, expro: exo, expri: exi}
 }
 
 
 // Ֆունկցիայի կիրառում
 type Apply struct {
-	node
+	Type rune
 	callee *Subroutine
 	arguments *list.List
 }
@@ -114,6 +96,7 @@ func (a *Apply) SetCallee(sb *Subroutine) {
 	a.callee = sb
 }
 
+
 // Հրամաններ
 type Statement interface {
 	execute(Environment)
@@ -121,7 +104,6 @@ type Statement interface {
 
 // Վերագրում
 type Let struct {
-	node
 	varname string
 	expr Expression
 }
@@ -134,7 +116,6 @@ func NewLet(vn string, ex Expression) *Let {
 
 // Ներմուծում
 type Input struct {
-	node
 	varname string
 }
 
@@ -146,7 +127,6 @@ func NewInput(vn string) *Input {
 
 // Արտածում
 type Print struct {
-	node
 	expr Expression
 }
 
@@ -158,7 +138,6 @@ func NewPrint(ex Expression) *Print {
 
 // Ճյուղավորում
 type If struct {
-	node
 	condition Expression
 	decision Statement
 	alternative Statement
@@ -178,7 +157,6 @@ func (s *If) SetElse(el Statement) {
 
 // Նախապայմանով ցիկլ
 type While struct {
-	node
 	condition Expression
 	body Statement
 }
@@ -191,7 +169,6 @@ func NewWhile(co Expression, bo Statement) *While {
 
 // Հաշվիչով ցիկլ
 type For struct {
-	node
 	parameter string
 	begin Expression
 	end Expression
@@ -223,7 +200,6 @@ func (c *Call) SetCallee(sb *Subroutine) {
 
 // Հրամանների հաջորդականություն
 type Sequence struct {
-	node
 	items *list.List
 }
 
@@ -240,7 +216,6 @@ func (s *Sequence) AddItem(e Statement) {
 
 // Ենթածրագիր
 type Subroutine struct {
-	node
 	name string
 	parameters *list.List
 	body Statement
