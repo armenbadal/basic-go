@@ -1,4 +1,3 @@
-
 package engine
 
 import (
@@ -143,6 +142,3 @@ func TLt(x, y *Value) *Value {
 func TLe(x, y *Value) *Value {
 	return NewNumber(toFloat(x.text <= y.text))
 }
-
-
-

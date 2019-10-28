@@ -1,4 +1,3 @@
-
 package engine
 
 import (
@@ -9,14 +8,14 @@ import (
 // Երկու բազային տիպեր
 const (
 	T_NUMBER = 'N'
-	T_TEXT = 'T'
+	T_TEXT   = 'T'
 )
 
 // Ունիվերսալ արժեք
 type Value struct {
-	Type rune
+	Type   rune
 	number float64
-	text string
+	text   string
 }
 
 // Նոր թվային օբյեկտ
@@ -28,7 +27,6 @@ func NewNumber(val float64) *Value {
 func NewText(val string) *Value {
 	return &Value{Type: 'T', text: val}
 }
-
 
 // Արտահայտություններ
 type Expression interface {
@@ -52,12 +50,11 @@ func NewVariable(nm string) *Variable {
 	return &Variable{Type: yp, name: nm}
 }
 
-
 // Ունար գործողություն
 type Unary struct {
-	Type rune
+	Type  rune
 	opfun func(x *Value) *Value
-	expr Expression
+	expr  Expression
 }
 
 //
@@ -65,11 +62,10 @@ func NewUnary(op func(x *Value) *Value, eo Expression) *Unary {
 	return &Unary{opfun: op, expr: eo}
 }
 
-
 // Բինար գործողություն
 type Binary struct {
-	Type rune
-	opfun func(x, y *Value) *Value
+	Type         rune
+	opfun        func(x, y *Value) *Value
 	expro, expri Expression
 }
 
@@ -78,11 +74,10 @@ func NewBinary(op func(x, y *Value) *Value, exo, exi Expression) *Binary {
 	return &Binary{opfun: op, expro: exo, expri: exi}
 }
 
-
 // Ֆունկցիայի կիրառում
 type Apply struct {
-	Type rune
-	callee *Subroutine
+	Type      rune
+	callee    *Subroutine
 	arguments *list.List
 }
 
@@ -96,7 +91,6 @@ func (a *Apply) SetCallee(sb *Subroutine) {
 	a.callee = sb
 }
 
-
 // Հրամաններ
 type Statement interface {
 	execute(Environment)
@@ -105,14 +99,13 @@ type Statement interface {
 // Վերագրում
 type Let struct {
 	varname string
-	expr Expression
+	expr    Expression
 }
 
 //
 func NewLet(vn string, ex Expression) *Let {
 	return &Let{varname: vn, expr: ex}
 }
-
 
 // Ներմուծում
 type Input struct {
@@ -124,7 +117,6 @@ func NewInput(vn string) *Input {
 	return &Input{varname: vn}
 }
 
-
 // Արտածում
 type Print struct {
 	expr Expression
@@ -135,11 +127,10 @@ func NewPrint(ex Expression) *Print {
 	return &Print{expr: ex}
 }
 
-
 // Ճյուղավորում
 type If struct {
-	condition Expression
-	decision Statement
+	condition   Expression
+	decision    Statement
 	alternative Statement
 }
 
@@ -153,12 +144,10 @@ func (s *If) SetElse(el Statement) {
 	s.alternative = el
 }
 
-
-
 // Նախապայմանով ցիկլ
 type While struct {
 	condition Expression
-	body Statement
+	body      Statement
 }
 
 //
@@ -166,14 +155,13 @@ func NewWhile(co Expression, bo Statement) *While {
 	return &While{condition: co, body: bo}
 }
 
-
 // Հաշվիչով ցիկլ
 type For struct {
 	parameter string
-	begin Expression
-	end Expression
-	step Expression
-	body Statement
+	begin     Expression
+	end       Expression
+	step      Expression
+	body      Statement
 }
 
 //
@@ -181,10 +169,9 @@ func NewFor(p string, b, e, s Expression, d Statement) *For {
 	return &For{parameter: p, begin: b, end: e, step: s, body: d}
 }
 
-
 // Ենթածրագիր կանչ
 type Call struct {
-	callee *Subroutine
+	callee    *Subroutine
 	arguments *list.List
 }
 
@@ -213,19 +200,17 @@ func (s *Sequence) AddItem(e Statement) {
 	s.items.PushBack(e)
 }
 
-
 // Ենթածրագիր
 type Subroutine struct {
-	name string
+	name       string
 	parameters *list.List
-	body Statement
+	body       Statement
 }
 
 //
 func NewSubroutine(nm string, pars *list.List, dy Statement) *Subroutine {
 	return &Subroutine{name: nm, parameters: pars, body: dy}
 }
-
 
 // Ծրագիր
 type Program struct {
@@ -241,5 +226,3 @@ func NewProgram() *Program {
 func (p *Program) AddMember(su *Subroutine) {
 	p.members[su.name] = su
 }
-
-

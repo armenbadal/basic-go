@@ -1,4 +1,3 @@
-
 package parser
 
 import "fmt"
@@ -24,7 +23,7 @@ const (
 	xStep
 	xCall
 	xEnd
-	
+
 	xAdd
 	xSub
 	xAmp
@@ -43,7 +42,7 @@ const (
 	xAnd
 	xOr
 	xNot
-	
+
 	xNewLine
 	xLeftPar
 	xRightPar
@@ -55,11 +54,11 @@ const (
 type lexeme struct {
 	token int
 	value string
-	line int
+	line  int
 }
 
 func (l *lexeme) is(exps ...int) bool {
-	for _, e :=range exps {
+	for _, e := range exps {
 		if e == l.token {
 			return true
 		}
@@ -70,6 +69,3 @@ func (l *lexeme) is(exps ...int) bool {
 func (l *lexeme) ToString() string {
 	return fmt.Sprintf("<%d,\t%s,\t%d>", l.token, l.value, l.line)
 }
-
-
-

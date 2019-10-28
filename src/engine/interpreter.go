@@ -1,10 +1,8 @@
-
 package engine
 
 import (
 	"container/list"
 )
-
 
 // Կատարման միջավայր
 type Environment map[string]*Value
@@ -13,7 +11,6 @@ type Environment map[string]*Value
 func (e *Value) evaluate(env Environment) *Value {
 	return e
 }
-
 
 //
 func (e *Variable) evaluate(env Environment) *Value {
@@ -47,7 +44,6 @@ func (e *Binary) evaluate(env Environment) *Value {
 func (e *Apply) evaluate(env Environment) *Value {
 	return nil
 }
-
 
 //
 func (s *Let) execute(env Environment) {
@@ -86,7 +82,6 @@ func (s *Sequence) execute(env Environment) {
 	}
 }
 
-
 // Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func (p *Program) Execute() {
 	ep, found := p.members["Main"]
@@ -95,4 +90,3 @@ func (p *Program) Execute() {
 		entry.execute(make(Environment))
 	}
 }
-

@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -12,5 +11,3 @@ func main() {
 	pars := parser.NewParser("c:/Projects/a0/test00.bas")
 	pars.Parse()
 }
-
-

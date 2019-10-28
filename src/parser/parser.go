@@ -1,4 +1,3 @@
-
 package parser
 
 import (
@@ -9,16 +8,15 @@ import (
 	"strconv"
 )
 
-
 // վերլուծված ենթածրագրերի «գլոբալ» ցուցակ
 var subrs = map[string]*engine.Subroutine{}
+
 // անհայտ ենթածրագրիերի կանչերի ցուցակ
 var clinks = map[string]*list.List{}
 
-
 // Շարահյուսական վերլուծիչի ստրուկտուրան։
 type Parser struct {
-	scer *scanner
+	scer      *scanner
 	lookahead *lexeme
 
 	program *engine.Program
@@ -42,7 +40,7 @@ func NewParser(filename string) *Parser {
 	pars.lookahead = pars.scer.next()
 
 	pars.program = engine.NewProgram()
-	
+
 	return pars
 }
 
@@ -133,7 +131,7 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 		}
 		delete(clinks, name)
 	}
-	
+
 	return sub
 }
 
@@ -306,7 +304,6 @@ func (p *Parser) parseCall() engine.Statement {
 		}
 	}
 
-	
 	sp, defined := subrs[name]
 	if defined {
 		return engine.NewCall(sp, args)
@@ -528,4 +525,3 @@ func (p *Parser) match(exp int) {
 		panic("Վերլուծության սխալ")
 	}
 }
-

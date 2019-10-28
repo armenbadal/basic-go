@@ -1,4 +1,3 @@
-
 package parser
 
 import (
@@ -23,7 +22,7 @@ var keywords = map[string]int{
 	"CALL":   xCall,
 	"END":    xEnd,
 	"AND":    xAnd,
-	"OR":     xOr }
+	"OR":     xOr}
 
 // Բառային վերլուծիչի ստրուկտուրան
 type scanner struct {
@@ -40,7 +39,7 @@ type scanner struct {
 
 // Ներմուծման հոսքից կարդում է մեկ նիշ և վերագրում է ch դաշտին
 func (s *scanner) read() {
-	c, _, e :=s.source.ReadRune()
+	c, _, e := s.source.ReadRune()
 	if e != nil {
 		s.ch = 0
 	} else {
@@ -50,7 +49,7 @@ func (s *scanner) read() {
 
 // Ներմուծման հոսաից կարդում է pred պրեդիկատին բավարարող նիշերի
 // անընդհատ հաջորդականություն։ Կարդացածը պահվում է text դաշտում։
-func (s *scanner) scan(pred func(rune)bool) {
+func (s *scanner) scan(pred func(rune) bool) {
 	s.text = ""
 	for pred(s.ch) {
 		s.text += string(s.ch)
@@ -64,7 +63,7 @@ func (s *scanner) next() *lexeme {
 	if s.ch == 0 {
 		return &lexeme{xEof, "EOF", s.line}
 	}
-	
+
 	// բաց թողնել բացատանիշերը
 	for s.ch == ' ' || s.ch == '\t' || s.ch == '\r' {
 		s.read()
@@ -94,14 +93,14 @@ func (s *scanner) next() *lexeme {
 	// տեքստային լիտերալ
 	if s.ch == '"' {
 		s.read()
-		s.scan(func(c rune)bool{ return c != '"' })
+		s.scan(func(c rune) bool { return c != '"' })
 		s.read()
 		return &lexeme{xText, s.text, s.line}
 	}
-	
+
 	// իդենտիֆիկատորներ ու ծառայողական բառեր
 	if unicode.IsLetter(s.ch) {
-		s.scan(func(c rune)bool{
+		s.scan(func(c rune) bool {
 			return unicode.IsLetter(c) || unicode.IsDigit(c)
 		})
 		if s.ch == '$' {
@@ -109,11 +108,13 @@ func (s *scanner) next() *lexeme {
 			s.read()
 		}
 		kw, ok := keywords[s.text]
-		if !ok { kw = xIdent }
+		if !ok {
+			kw = xIdent
+		}
 		return &lexeme{kw, s.text, s.line}
 	}
-	
- 	// նոր տողի անցման նիշ
+
+	// նոր տողի անցման նիշ
 	if s.ch == '\n' {
 		s.line++
 		s.read()
@@ -166,13 +167,12 @@ func (s *scanner) next() *lexeme {
 		kind = xRightPar
 	case ',':
 		kind = xComma
-    default:
+	default:
 		kind = xNone
 	}
 
 	res := &lexeme{kind, string(s.ch), s.line}
 	s.read()
-	
+
 	return res
 }
-
