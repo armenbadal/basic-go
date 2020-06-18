@@ -9,18 +9,21 @@ import (
 	"strconv"
 )
 
-// վերլուծված ենթածրագրերի «գլոբալ» ցուցակ
-var subrs = map[string]*engine.Subroutine{}
-
-// անհայտ ենթածրագրիերի կանչերի ցուցակ
-var clinks = map[string]*list.List{}
-
 // Շարահյուսական վերլուծիչի ստրուկտուրան։
 type Parser struct {
-	scer      *scanner
+	// բառային վերլուծիչի ցուցիչ
+	scer *scanner
+	// look-a-head սիմվոլ
 	lookahead *lexeme
 
+	// վերլուծության ծառի արմատ
 	program *engine.Program
+
+	// վերլուծված ենթածրագրերի «գլոբալ» ցուցակ
+	subrs map[string]*engine.Subroutine
+
+	// անհայտ ենթածրագրիերի կանչերի ցուցակ
+	clinks map[string]*list.List
 }
 
 // Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -39,6 +42,9 @@ func NewParser(filename string) (*Parser, error) {
 	pars.scer.line = 1
 	pars.scer.read()
 	pars.lookahead = pars.scer.next()
+
+	pars.subrs = make(map[string]*engine.Subroutine)
+	pars.clinks = make(map[string]*list.List)
 
 	pars.program = engine.NewProgram()
 
@@ -119,10 +125,10 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 	p.match(xSubroutine)
 
 	sub := engine.NewSubroutine(name, pars, body)
-	subrs[name] = sub
+	p.subrs[name] = sub
 
-	if clinks[name] != nil {
-		for e := clinks[name].Front(); e != nil; e = e.Next() {
+	if p.clinks[name] != nil {
+		for e := p.clinks[name].Front(); e != nil; e = e.Next() {
 			switch coa := e.Value.(type) {
 			case engine.Call:
 				coa.SetCallee(sub)
@@ -130,7 +136,7 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 				coa.SetCallee(sub)
 			}
 		}
-		delete(clinks, name)
+		delete(p.clinks, name)
 	}
 
 	return sub
@@ -305,17 +311,17 @@ func (p *Parser) parseCall() engine.Statement {
 		}
 	}
 
-	sp, defined := subrs[name]
+	sp, defined := p.subrs[name]
 	if defined {
 		return engine.NewCall(sp, args)
 	}
 
 	dummy := engine.NewSubroutine("__dummy__", list.New(), nil)
 	dcall := engine.NewCall(dummy, args)
-	if clinks[name] == nil {
-		clinks[name] = list.New()
+	if p.clinks[name] == nil {
+		p.clinks[name] = list.New()
 	}
-	clinks[name].PushBack(dcall)
+	p.clinks[name].PushBack(dcall)
 	return dcall
 }
 

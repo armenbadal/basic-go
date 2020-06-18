@@ -8,8 +8,9 @@ import (
 func main() {
 	fmt.Println("Բեյսիկ-Փ լեզվի իրականացումը Go լեզվով։")
 
-	pars, err := parser.NewParser("c:/Projects/a0/test00.bas")
+	pars, err := parser.NewParser("../examples/ex0.bas")
 	if nil == err {
-		pars.Parse()
+		tree := pars.Parse()
+		print(tree)
 	}
 }
