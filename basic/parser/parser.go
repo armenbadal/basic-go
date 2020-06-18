@@ -1,9 +1,10 @@
 package parser
 
 import (
+	"basic/engine"
 	"bufio"
 	"container/list"
-	"engine"
+	"errors"
 	"os"
 	"strconv"
 )
@@ -23,11 +24,11 @@ type Parser struct {
 }
 
 // Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
-func NewParser(filename string) *Parser {
+func NewParser(filename string) (*Parser, error) {
 	// բացել ֆայլային հոսքը
 	rd, er := os.Open(filename)
 	if er != nil {
-		// TODO: signal for failure
+		return nil, errors.New("Ֆայլը բացելը ձախողվեց")
 	}
 	defer rd.Close()
 
@@ -41,7 +42,7 @@ func NewParser(filename string) *Parser {
 
 	pars.program = engine.NewProgram()
 
-	return pars
+	return pars, nil
 }
 
 // Վերլուծությունը սկսող արտաքին ֆունկցիա
