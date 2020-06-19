@@ -22,7 +22,8 @@ var keywords = map[string]int{
 	"CALL":   xCall,
 	"END":    xEnd,
 	"AND":    xAnd,
-	"OR":     xOr}
+	"OR":     xOr,
+	"NOT":    xNot}
 
 // Բառային վերլուծիչի ստրուկտուրան
 type scanner struct {
@@ -51,7 +52,7 @@ func (s *scanner) read() {
 // անընդհատ հաջորդականություն։ Կարդացածը պահվում է text դաշտում։
 func (s *scanner) scan(pred func(rune) bool) {
 	s.text = ""
-	for pred(s.ch) {
+	for pred(s.ch) && s.ch != 0 {
 		s.text += string(s.ch)
 		s.read()
 	}
@@ -94,6 +95,9 @@ func (s *scanner) next() *lexeme {
 	if s.ch == '"' {
 		s.read()
 		s.scan(func(c rune) bool { return c != '"' })
+		if s.ch != '"' {
+			return &lexeme{xEof, "EOF", s.line}
+		}
 		s.read()
 		return &lexeme{xText, s.text, s.line}
 	}

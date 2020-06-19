@@ -5,50 +5,50 @@ import "fmt"
 const (
 	xNone = iota
 
-	xNumber
-	xText
-	xIdent
+	xNumber // թիվ
+	xText   // տեքստ
+	xIdent  // իդենտիֆիկատոր
 
-	xSubroutine
-	xLet
-	xInput
-	xPrint
-	xIf
-	xThen
-	xElseIf
-	xElse
-	xWhile
-	xFor
-	xTo
-	xStep
-	xCall
-	xEnd
+	xSubroutine // SUB
+	xLet        // LET
+	xInput      // INPUT
+	xPrint      // PRINT
+	xIf         // IF
+	xThen       // THEN
+	xElseIf     // ELSEIF
+	xElse       // ELSE
+	xWhile      // WHILE
+	xFor        // FOR
+	xTo         // TO
+	xStep       // STEP
+	xCall       // CALL
+	xEnd        // END
 
-	xAdd
-	xSub
-	xAmp
-	xMul
-	xDiv
-	xMod
-	xPow
+	xAdd // +
+	xSub // -
+	xAmp // &
+	xMul // *
+	xDiv // /
+	xMod // \
+	xPow // ^
 
-	xEq
-	xNe
-	xGt
-	xGe
-	xLt
-	xLe
+	xEq // =
+	xNe // <>
+	xGt // >
+	xGe // >=
+	xLt // <
+	xLe // <=
 
-	xAnd
-	xOr
-	xNot
+	xAnd // AND
+	xOr  // OR
+	xNot // NOT
 
-	xNewLine
-	xLeftPar
-	xRightPar
-	xComma
+	xNewLine  // <-/
+	xLeftPar  // (
+	xRightPar // )
+	xComma    // ,
 
-	xEof
+	xEof // ֆայլի վերջը
 )
 
 type lexeme struct {
