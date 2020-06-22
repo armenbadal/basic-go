@@ -1,0 +1,39 @@
+package engine
+
+import "testing"
+
+func TestCreateScope(t *testing.T) {
+	s := NewScope()
+	s.Add("a")
+	s.Add("b")
+	s.Add("c")
+	s.Add("e")
+
+	s = Extend(s)
+	s.Add("d")
+	s.Add("a")
+
+	s = Extend(s)
+	s.Add("b")
+	s.Add("c")
+
+	v0 := s.Search("c")
+	t.Logf("> %s: %d", v0.name, v0.eid)
+
+	v0 = s.Search("d")
+	t.Logf("> %s: %d", v0.name, v0.eid)
+
+	v0 = s.Search("e")
+	t.Logf("> %s: %d", v0.name, v0.eid)
+
+	//
+	p := s
+	for p != nil {
+		for _, e := range p.items {
+			t.Logf("| %s: %d", e.name, e.eid)
+		}
+		p = p.up
+	}
+
+	t.Fail()
+}

@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Շարահյուսական վերլուծիչի ստրուկտուրան։
+// Parser Շարահյուսական վերլուծիչի ստրուկտուրան։
 type Parser struct {
 	// բառային վերլուծիչի ցուցիչ
 	scer *scanner
@@ -26,7 +26,7 @@ type Parser struct {
 	clinks map[string]*list.List
 }
 
-// Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
+// NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
 func NewParser(filename string) (*Parser, error) {
 	// բացել ֆայլային հոսքը
 	rd, er := os.Open(filename)
@@ -51,7 +51,7 @@ func NewParser(filename string) (*Parser, error) {
 	return pars, nil
 }
 
-// Վերլուծությունը սկսող արտաքին ֆունկցիա
+// Parse Վերլուծությունը սկսող արտաքին ֆունկցիա
 func (p *Parser) Parse() *engine.Program {
 	// շարահյուսական սխալի արտածում
 	defer func() {
@@ -143,6 +143,9 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 }
 
 // Վերլուծել հրամանների հաջորդականություն
+//
+// Sequence = NewLines { Statement NewLines }.
+//
 func (p *Parser) parseSequence() engine.Statement {
 	p.parseNewLines()
 	res := engine.NewSequence()
@@ -209,9 +212,9 @@ func (p *Parser) parsePrint() engine.Statement {
 
 // Ճյուղավորման հրամանի վերլուծությունը.
 //
-// Statement = 'IF' Expression 'THEN' NewLines { Statement NewLines }
-//             { 'ELSEIF' Expression 'THEN' NewLines { Statement NewLines } }
-//             [ 'ELSE' NewLines { Statement NewLines } ]
+// Statement = 'IF' Expression 'THEN' Sequence
+//             { 'ELSEIF' Expression 'THEN' Sequence }
+//             [ 'ELSE' Sequence ]
 //             'END' 'IF'.
 //
 func (p *Parser) parseIf() engine.Statement {
@@ -242,8 +245,7 @@ func (p *Parser) parseIf() engine.Statement {
 
 // Նախապայմանով ցիկլի վերլուծությունը
 //
-// Statement = 'WHILE' Expression NewLines
-//             { Statement NewLines } 'END' 'WHILE'.
+// Statement = 'WHILE' Expression Sequence 'END' 'WHILE'.
 //
 func (p *Parser) parseWhile() engine.Statement {
 	p.match(xWhile)
@@ -257,7 +259,7 @@ func (p *Parser) parseWhile() engine.Statement {
 // Պարամետրով ցիկլի վերլուծությունը
 //
 // Statement = 'FOR' IDENT '=' Expression 'TO' Expression
-//             ['STEP' ['+'|'-'] NUMBER { Statement NewLines }
+//             ['STEP' ['+'|'-'] NUMBER Sequence
 //             'END' 'FOR'.
 //
 func (p *Parser) parseFor() engine.Statement {
@@ -325,6 +327,9 @@ func (p *Parser) parseCall() engine.Statement {
 	return dcall
 }
 
+// Արտահայտություն
+//
+// Expression = Conjunction { OR Conjunction }.
 //
 func (p *Parser) parseExpression() engine.Expression {
 	res := p.parseConjunction()
@@ -336,6 +341,9 @@ func (p *Parser) parseExpression() engine.Expression {
 	return res
 }
 
+// Կոնյունկցիա
+//
+// Conjunction = Equality { AND Equality }.
 //
 func (p *Parser) parseConjunction() engine.Expression {
 	res := p.parseEquality()
@@ -347,6 +355,9 @@ func (p *Parser) parseConjunction() engine.Expression {
 	return res
 }
 
+// Հավասարություն
+//
+// Equality = Comparison [('=' | '<>') Comparison].
 //
 func (p *Parser) parseEquality() engine.Expression {
 	res := p.parseComparison()
@@ -366,6 +377,9 @@ func (p *Parser) parseEquality() engine.Expression {
 	return res
 }
 
+// Համեմատություն
+//
+// Comparison = Addition [('>' | '>=' | '<' | '<=') Addition].
 //
 func (p *Parser) parseComparison() engine.Expression {
 	res := p.parseAddition()
@@ -391,6 +405,9 @@ func (p *Parser) parseComparison() engine.Expression {
 	return res
 }
 
+// Գումարում, հանում կամ տողերի կոնկատենացիա
+//
+// Addition = Multiplication {('+' | '-' | '&') Multiplication}.
 //
 func (p *Parser) parseAddition() engine.Expression {
 	res := p.parseMultiplication()
@@ -413,6 +430,9 @@ func (p *Parser) parseAddition() engine.Expression {
 	return res
 }
 
+// Բազմապատկում, բաժանում կամ մնացորդ
+//
+// Multiplication = Power {('*' | '/' | '\') Power}.
 //
 func (p *Parser) parseMultiplication() engine.Expression {
 	res := p.parsePower()
@@ -457,6 +477,7 @@ func (p *Parser) parsePower() engine.Expression {
 //        | '(' Expression ')'.
 //
 func (p *Parser) parseFactor() engine.Expression {
+	// թվային լիտերալ
 	if p.has(xNumber) {
 		lex := p.lookahead.value
 		p.match(xNumber)
@@ -464,12 +485,14 @@ func (p *Parser) parseFactor() engine.Expression {
 		return engine.NewNumber(val)
 	}
 
+	// տեքստային լիտերալ
 	if p.has(xText) {
 		val := p.lookahead.value
 		p.match(xText)
 		return engine.NewText(val)
 	}
 
+	// իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
 	if p.has(xIdent) {
 		name := p.lookahead.value
 		p.match(xIdent)
@@ -491,6 +514,7 @@ func (p *Parser) parseFactor() engine.Expression {
 		return engine.NewVariable(name)
 	}
 
+	// ունար գործողություն
 	if p.has(xSub, xNot) {
 		var opc engine.UnOper
 		switch p.lookahead.token {
@@ -507,6 +531,7 @@ func (p *Parser) parseFactor() engine.Expression {
 		return res
 	}
 
+	// փակագծեր
 	if p.has(xLeftPar) {
 		p.match(xLeftPar)
 		res := p.parseExpression()

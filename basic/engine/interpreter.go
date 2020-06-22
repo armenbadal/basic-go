@@ -4,7 +4,7 @@ import (
 	"container/list"
 )
 
-// Կատարման միջավայր
+// Environment Կատարման միջավայր
 type Environment map[string]*Value
 
 //
@@ -82,7 +82,7 @@ func (s *Sequence) execute(env Environment) {
 	}
 }
 
-// Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
+// Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func (p *Program) Execute() {
 	ep, found := p.members["Main"]
 	if found {
