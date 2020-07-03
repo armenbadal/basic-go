@@ -19,11 +19,14 @@ type Parser struct {
 	// վերլուծության ծառի արմատ
 	program *engine.Program
 
-	// վերլուծված ենթածրագրերի «գլոբալ» ցուցակ
+	// վերլուծված ենթածրագրերի ցուցակ
 	subrs map[string]*engine.Subroutine
 
 	// անհայտ ենթածրագրիերի կանչերի ցուցակ
 	clinks map[string]*list.List
+
+	// ընթացիկ վերլուծվող ենթածրագիր
+	current *engine.Subroutine
 }
 
 // NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -97,10 +100,10 @@ func (p *Parser) parseNewLines() {
 
 // Վերլուծել ենթածրագիրը
 //
-// Subroutine = 'SUB' IDENT ['(' [IDENT {',' IDENT}] ')'] NewLines
-//              { Statement NewLines } 'END' SUB'.
+// Subroutine = 'SUB' IDENT ['(' [IDENT {',' IDENT}] ')'] Sequence 'END' SUB'.
 //
 func (p *Parser) parseSubroutine() *engine.Subroutine {
+	// վերնագրի վերլուծություն
 	p.match(xSubroutine)
 	name := p.lookahead.value
 	p.match(xIdent)
@@ -120,13 +123,20 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 		}
 		p.match(xRightPar)
 	}
+
+	// նոր ենթածրագրի օբյեկտ
+	sub := engine.NewSubroutine(name, pars, nil)
+
+	// մարմնի վերլուծություն
 	body := p.parseSequence()
+	sub.SetBody(body)
+
 	p.match(xEnd)
 	p.match(xSubroutine)
 
-	sub := engine.NewSubroutine(name, pars, body)
 	p.subrs[name] = sub
 
+	// գտնել և լուծել «ազատ» հղումները
 	if p.clinks[name] != nil {
 		for e := p.clinks[name].Front(); e != nil; e = e.Next() {
 			switch coa := e.Value.(type) {

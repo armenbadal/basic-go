@@ -14,31 +14,42 @@ func NewSymbol(n string) *Symbol {
 	return &Symbol{name: n, eid: symbolIndex}
 }
 
-// Scope ...
-type Scope struct {
-	up    *Scope
+type scope struct {
+	up    *scope
 	items []*Symbol
 }
 
-// NewScope ...
-func NewScope() *Scope {
-	symbolIndex = 0
-	return Extend(nil)
+// Table ...
+type Table struct {
+	sc *scope
 }
 
-// Extend ...
-func Extend(s *Scope) *Scope {
-	return &Scope{s, make([]*Symbol, 0, 8)}
+// NewTable ...
+func NewTable() *Table {
+	symbolIndex = 0
+	return &Table{sc: &scope{nil, make([]*Symbol, 0, 8)}}
+}
+
+// OpenScope ...
+func (t *Table) OpenScope() {
+	t.sc = &scope{t.sc, make([]*Symbol, 0, 8)}
+}
+
+// CloseScope ...
+func (t *Table) CloseScope() {
+	if t.sc != nil {
+		t.sc = t.sc.up
+	}
 }
 
 // Add ...
-func (s *Scope) Add(n string) {
-	s.items = append(s.items, NewSymbol(n))
+func (t *Table) Add(n string) {
+	t.sc.items = append(t.sc.items, NewSymbol(n))
 }
 
 // Search ...
-func (s *Scope) Search(n string) *Symbol {
-	p := s
+func (t *Table) Search(n string) *Symbol {
+	p := t.sc
 	for p != nil {
 		for _, e := range p.items {
 			if e.name == n {

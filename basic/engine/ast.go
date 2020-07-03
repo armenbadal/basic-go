@@ -7,8 +7,8 @@ import (
 
 // Երկու բազային տիպեր
 const (
-	T_NUMBER = 'N'
-	T_TEXT   = 'T'
+	TypeNumber = 'N'
+	TypeText   = 'T'
 )
 
 // Value Ունիվերսալ արժեք
@@ -33,13 +33,13 @@ type Expression interface {
 	evaluate(Environment) *Value
 }
 
-// Variable ...
+// Variable Փոփոխական
 type Variable struct {
 	Type rune
 	name string
 }
 
-// NewVariable ...
+// NewVariable Ստեղծում է նոր փոփոխականի օբյեկտ
 func NewVariable(nm string) *Variable {
 	yp := 'V'
 	if strings.HasSuffix(nm, "$") {
@@ -207,9 +207,14 @@ type Subroutine struct {
 	body       Statement
 }
 
-// NewSubroutine ...
+// NewSubroutine Նոր ենթածրագրի օբյեկտ
 func NewSubroutine(nm string, pars *list.List, dy Statement) *Subroutine {
 	return &Subroutine{name: nm, parameters: pars, body: dy}
+}
+
+// SetBody Լրացնել ենթածրագրի մարմինը
+func (s *Subroutine) SetBody(q Statement) {
+	s.body = q
 }
 
 // Program Ծրագիր

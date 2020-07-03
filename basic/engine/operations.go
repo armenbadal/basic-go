@@ -4,10 +4,10 @@ import (
 	"math"
 )
 
-// UnOper ...
+// UnOper Միտեղանի գործողություն
 type UnOper func(x *Value) *Value
 
-// BinOper ...
+// BinOper Երկտեղանի գործողություն
 type BinOper func(x, y *Value) *Value
 
 // numeric operations
@@ -19,7 +19,7 @@ func Neg(x *Value) *Value {
 
 // Not ...
 func Not(x *Value) *Value {
-	return NewNumber(toFloat(!toBool(x.number)))
+	return NewNumber(toReal(!toBool(x.number)))
 }
 
 // Add ..
@@ -54,7 +54,7 @@ func Pow(x, y *Value) *Value {
 }
 
 //
-func toFloat(b bool) float64 {
+func toReal(b bool) float64 {
 	if b {
 		return 1.0
 	}
@@ -68,44 +68,44 @@ func toBool(v float64) bool {
 
 // Eq ...
 func Eq(x, y *Value) *Value {
-	return NewNumber(toFloat(x.number == y.number))
+	return NewNumber(toReal(x.number == y.number))
 }
 
 // Ne ...
 func Ne(x, y *Value) *Value {
-	return NewNumber(toFloat(x.number != y.number))
+	return NewNumber(toReal(x.number != y.number))
 }
 
 // Gt ...
 func Gt(x, y *Value) *Value {
-	return NewNumber(toFloat(x.number > y.number))
+	return NewNumber(toReal(x.number > y.number))
 }
 
 // Ge ...
 func Ge(x, y *Value) *Value {
-	return NewNumber(toFloat(x.number >= y.number))
+	return NewNumber(toReal(x.number >= y.number))
 }
 
 // Lt ...
 func Lt(x, y *Value) *Value {
-	return NewNumber(toFloat(x.number < y.number))
+	return NewNumber(toReal(x.number < y.number))
 }
 
 // Le ...
 func Le(x, y *Value) *Value {
-	return NewNumber(toFloat(x.number <= y.number))
+	return NewNumber(toReal(x.number <= y.number))
 }
 
 // And ...
 func And(x, y *Value) *Value {
 	res := toBool(x.number) && toBool(y.number)
-	return NewNumber(toFloat(res))
+	return NewNumber(toReal(res))
 }
 
 // Or ...
 func Or(x, y *Value) *Value {
 	res := toBool(x.number) && toBool(y.number)
-	return NewNumber(toFloat(res))
+	return NewNumber(toReal(res))
 }
 
 // text operations
@@ -117,30 +117,30 @@ func Conc(x, y *Value) *Value {
 
 // TEq ...
 func TEq(x, y *Value) *Value {
-	return NewNumber(toFloat(x.text == y.text))
+	return NewNumber(toReal(x.text == y.text))
 }
 
 // TNe ...
 func TNe(x, y *Value) *Value {
-	return NewNumber(toFloat(x.text != y.text))
+	return NewNumber(toReal(x.text != y.text))
 }
 
 // TGt ...
 func TGt(x, y *Value) *Value {
-	return NewNumber(toFloat(x.text > y.text))
+	return NewNumber(toReal(x.text > y.text))
 }
 
 // TGe ...
 func TGe(x, y *Value) *Value {
-	return NewNumber(toFloat(x.text >= y.text))
+	return NewNumber(toReal(x.text >= y.text))
 }
 
 // TLt ...
 func TLt(x, y *Value) *Value {
-	return NewNumber(toFloat(x.text < y.text))
+	return NewNumber(toReal(x.text < y.text))
 }
 
 // TLe ...
 func TLe(x, y *Value) *Value {
-	return NewNumber(toFloat(x.text <= y.text))
+	return NewNumber(toReal(x.text <= y.text))
 }
