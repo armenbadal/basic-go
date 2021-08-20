@@ -107,18 +107,18 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 	p.match(xSubroutine)
 	name := p.lookahead.value
 	p.match(xIdent)
-	pars := list.New()
+	pars := make([]engine.Node, 0)
 	if p.has(xLeftPar) {
 		p.match(xLeftPar)
 		if p.has(xIdent) {
 			pnm := p.lookahead.value
 			p.match(xIdent)
-			pars.PushBack(pnm)
+			pars = append(pars, pnm)
 			for p.has(xComma) {
 				p.match(xComma)
 				pnm = p.lookahead.value
 				p.match(xIdent)
-				pars.PushBack(pnm)
+				pars = append(pars, pnm)
 			}
 		}
 		p.match(xRightPar)
@@ -156,12 +156,12 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 //
 // Sequence = NewLines { Statement NewLines }.
 //
-func (p *Parser) parseSequence() engine.Statement {
+func (p *Parser) parseSequence() engine.Node {
 	p.parseNewLines()
 	res := engine.NewSequence()
 loop:
 	for {
-		var stat engine.Statement
+		var stat engine.Node
 		switch {
 		case p.has(xLet):
 			stat = p.parseLet()
@@ -190,7 +190,7 @@ loop:
 //
 // Statement = 'LET' IDENT '=' Expression.
 //
-func (p *Parser) parseLet() engine.Statement {
+func (p *Parser) parseLet() engine.Node {
 	p.match(xLet)
 	vn := p.lookahead.value
 	p.match(xIdent)
@@ -203,7 +203,7 @@ func (p *Parser) parseLet() engine.Statement {
 //
 // Statement = 'INPUT' IDENT.
 //
-func (p *Parser) parseInput() engine.Statement {
+func (p *Parser) parseInput() engine.Node {
 	p.match(xInput)
 	nam := p.lookahead.value
 	p.match(xIdent)
@@ -214,7 +214,7 @@ func (p *Parser) parseInput() engine.Statement {
 //
 // Statement = 'PRINT' Expression.
 //
-func (p *Parser) parsePrint() engine.Statement {
+func (p *Parser) parsePrint() engine.Node {
 	p.match(xPrint)
 	e0 := p.parseExpression()
 	return engine.NewPrint(e0)
@@ -227,7 +227,7 @@ func (p *Parser) parsePrint() engine.Statement {
 //             [ 'ELSE' Sequence ]
 //             'END' 'IF'.
 //
-func (p *Parser) parseIf() engine.Statement {
+func (p *Parser) parseIf() engine.Node {
 	p.match(xIf)
 	c0 := p.parseExpression()
 	p.match(xThen)
@@ -257,7 +257,7 @@ func (p *Parser) parseIf() engine.Statement {
 //
 // Statement = 'WHILE' Expression Sequence 'END' 'WHILE'.
 //
-func (p *Parser) parseWhile() engine.Statement {
+func (p *Parser) parseWhile() engine.Node {
 	p.match(xWhile)
 	c0 := p.parseExpression()
 	b0 := p.parseSequence()
@@ -272,7 +272,7 @@ func (p *Parser) parseWhile() engine.Statement {
 //             ['STEP' ['+'|'-'] NUMBER Sequence
 //             'END' 'FOR'.
 //
-func (p *Parser) parseFor() engine.Statement {
+func (p *Parser) parseFor() engine.Node {
 	p.match(xFor)
 	param := p.lookahead.value
 	p.match(xIdent)
@@ -308,18 +308,18 @@ func (p *Parser) parseFor() engine.Statement {
 //
 // Statement = 'CALL' IDENT [Expression {',' Expression}].
 //
-func (p *Parser) parseCall() engine.Statement {
+func (p *Parser) parseCall() engine.Node {
 	p.match(xCall)
 	name := p.lookahead.value
 	p.match(xIdent)
-	args := list.New()
+	args := make([]engine.Node, 0)
 	if p.has(xNumber, xText, xIdent, xSub, xNot, xLeftPar) {
 		e0 := p.parseExpression()
-		args.PushBack(e0)
+		args = append(args, e0)
 		for p.has(xComma) {
 			p.match(xComma)
 			e1 := p.parseExpression()
-			args.PushBack(e1)
+			args = append(args, e1)
 		}
 	}
 
@@ -328,7 +328,7 @@ func (p *Parser) parseCall() engine.Statement {
 		return engine.NewCall(sp, args)
 	}
 
-	dummy := engine.NewSubroutine("__dummy__", list.New(), nil)
+	dummy := engine.NewSubroutine("__dummy__", nil, nil)
 	dcall := engine.NewCall(dummy, args)
 	if p.clinks[name] == nil {
 		p.clinks[name] = list.New()
@@ -341,12 +341,12 @@ func (p *Parser) parseCall() engine.Statement {
 //
 // Expression = Conjunction { OR Conjunction }.
 //
-func (p *Parser) parseExpression() engine.Expression {
+func (p *Parser) parseExpression() engine.Node {
 	res := p.parseConjunction()
 	for p.has(xOr) {
 		p.match(xOr)
 		e0 := p.parseConjunction()
-		res = engine.NewBinary(engine.Or, res, e0)
+		res = engine.NewBinary("OR", res, e0)
 	}
 	return res
 }
@@ -355,12 +355,12 @@ func (p *Parser) parseExpression() engine.Expression {
 //
 // Conjunction = Equality { AND Equality }.
 //
-func (p *Parser) parseConjunction() engine.Expression {
+func (p *Parser) parseConjunction() engine.Node {
 	res := p.parseEquality()
 	for p.has(xAnd) {
 		p.match(xAnd)
 		e0 := p.parseEquality()
-		res = engine.NewBinary(engine.And, res, e0)
+		res = engine.NewBinary("AND", res, e0)
 	}
 	return res
 }
@@ -369,16 +369,16 @@ func (p *Parser) parseConjunction() engine.Expression {
 //
 // Equality = Comparison [('=' | '<>') Comparison].
 //
-func (p *Parser) parseEquality() engine.Expression {
+func (p *Parser) parseEquality() engine.Node {
 	res := p.parseComparison()
 	if p.has(xEq, xNe) {
-		var opc engine.BinOper
+		var opc string
 		switch p.lookahead.token {
 		case xEq:
-			opc = engine.Eq
+			opc = "="
 			p.match(xEq)
 		case xNe:
-			opc = engine.Ne
+			opc = "<>"
 			p.match(xNe)
 		}
 		e0 := p.parseComparison()
@@ -391,22 +391,22 @@ func (p *Parser) parseEquality() engine.Expression {
 //
 // Comparison = Addition [('>' | '>=' | '<' | '<=') Addition].
 //
-func (p *Parser) parseComparison() engine.Expression {
+func (p *Parser) parseComparison() engine.Node {
 	res := p.parseAddition()
 	if p.has(xGt, xGe, xLt, xLe) {
-		var opc engine.BinOper
+		var opc string
 		switch p.lookahead.token {
 		case xGt:
-			opc = engine.Gt
+			opc = ">"
 			p.match(xGt)
 		case xGe:
-			opc = engine.Ge
+			opc = ">="
 			p.match(xGe)
 		case xLt:
-			opc = engine.Lt
+			opc = "<"
 			p.match(xLt)
 		case xLe:
-			opc = engine.Le
+			opc = "<="
 			p.match(xLe)
 		}
 		e0 := p.parseAddition()
@@ -419,19 +419,19 @@ func (p *Parser) parseComparison() engine.Expression {
 //
 // Addition = Multiplication {('+' | '-' | '&') Multiplication}.
 //
-func (p *Parser) parseAddition() engine.Expression {
+func (p *Parser) parseAddition() engine.Node {
 	res := p.parseMultiplication()
 	for p.has(xAdd, xSub, xAmp) {
-		var opc engine.BinOper
+		var opc string
 		switch p.lookahead.token {
 		case xAdd:
-			opc = engine.Add
+			opc = "+"
 			p.match(xAdd)
 		case xSub:
-			opc = engine.Sub
+			opc = "-"
 			p.match(xSub)
 		case xAmp:
-			opc = engine.Conc
+			opc = "&"
 			p.match(xAmp)
 		}
 		e0 := p.parseMultiplication()
@@ -444,19 +444,19 @@ func (p *Parser) parseAddition() engine.Expression {
 //
 // Multiplication = Power {('*' | '/' | '\') Power}.
 //
-func (p *Parser) parseMultiplication() engine.Expression {
+func (p *Parser) parseMultiplication() engine.Node {
 	res := p.parsePower()
 	for p.has(xMul, xDiv, xMod) {
-		var opc engine.BinOper
+		var opc string
 		switch p.lookahead.token {
 		case xMul:
-			opc = engine.Mul
+			opc = "*"
 			p.match(xMul)
 		case xDiv:
-			opc = engine.Div
+			opc = "/"
 			p.match(xDiv)
 		case xMod:
-			opc = engine.Mod
+			opc = "\\"
 			p.match(xMod)
 		}
 		e0 := p.parsePower()
@@ -469,12 +469,12 @@ func (p *Parser) parseMultiplication() engine.Expression {
 //
 // Power = Factor '^' Power.
 //
-func (p *Parser) parsePower() engine.Expression {
+func (p *Parser) parsePower() engine.Node {
 	res := p.parseFactor()
 	if p.has(xPow) {
 		p.match(xPow)
 		e0 := p.parsePower()
-		res = engine.NewBinary(engine.Pow, res, e0)
+		res = engine.NewBinary("^", res, e0)
 	}
 	return res
 }
@@ -486,7 +486,7 @@ func (p *Parser) parsePower() engine.Expression {
 //        | NOT Factor
 //        | '(' Expression ')'.
 //
-func (p *Parser) parseFactor() engine.Expression {
+func (p *Parser) parseFactor() engine.Node {
 	// թվային լիտերալ
 	if p.has(xNumber) {
 		lex := p.lookahead.value
@@ -502,20 +502,27 @@ func (p *Parser) parseFactor() engine.Expression {
 		return engine.NewText(val)
 	}
 
+	// ցուցակի լիտերալ
+	if p.has(xLeftBr) {
+		p.match(xLeftBr)
+		p.match(xRightBr)
+
+	}
+
 	// իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
 	if p.has(xIdent) {
 		name := p.lookahead.value
 		p.match(xIdent)
 		if p.has(xLeftPar) {
 			p.match(xLeftPar)
-			args := list.New()
+			args := make([]engine.Node, 0)
 			if p.has(xNumber, xText, xIdent, xSub, xNot, xLeftPar) {
 				e0 := p.parseExpression()
-				args.PushBack(e0)
+				args = append(args, e0)
 				for p.has(xComma) {
 					p.match(xComma)
 					e1 := p.parseExpression()
-					args.PushBack(e1)
+					args = append(args, e1)
 				}
 			}
 			p.match(xRightPar)
@@ -526,13 +533,13 @@ func (p *Parser) parseFactor() engine.Expression {
 
 	// ունար գործողություն
 	if p.has(xSub, xNot) {
-		var opc engine.UnOper
+		var opc string
 		switch p.lookahead.token {
 		case xSub:
-			opc = engine.Neg
+			opc = "-"
 			p.match(xSub)
 		case xNot:
-			opc = engine.Not
+			opc = "NOT"
 			p.match(xNot)
 		}
 		res := p.parseFactor()

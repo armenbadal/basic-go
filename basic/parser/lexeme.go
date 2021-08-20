@@ -46,6 +46,8 @@ const (
 	xNewLine  // <-/
 	xLeftPar  // (
 	xRightPar // )
+	xLeftBr   // [
+	xRightBr  // ]
 	xComma    // ,
 
 	xEof // ֆայլի վերջը

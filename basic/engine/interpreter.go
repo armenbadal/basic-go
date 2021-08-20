@@ -1,11 +1,21 @@
 package engine
 
-import (
-	"container/list"
-)
+// Value Ունիվերսալ արժեք
+type Value struct {
+	kind    rune
+	boolean bool
+	number  float64
+	text    string
+	array   []*Value
+}
 
 // Environment Կատարման միջավայր
 type Environment map[string]*Value
+
+// Expression Արտահայտություններ
+type Expression interface {
+	evaluate(Environment) *Value
+}
 
 //
 func (e *Value) evaluate(env Environment) *Value {
@@ -19,7 +29,7 @@ func (e *Variable) evaluate(env Environment) *Value {
 
 //
 func (e *Unary) evaluate(env Environment) *Value {
-	res := e.expr.evaluate(env)
+	res := e.expr.(Expression).evaluate(env)
 	// if e.opcode == NEG {
 	// 	res = NewNumber(-res.number)
 	// } else if e.opcode == NOT {
@@ -43,6 +53,11 @@ func (e *Binary) evaluate(env Environment) *Value {
 //
 func (e *Apply) evaluate(env Environment) *Value {
 	return nil
+}
+
+// Statement Հրամանների ինտերֆեյսը
+type Statement interface {
+	execute(Environment)
 }
 
 //
@@ -71,22 +86,22 @@ func (s *For) execute(env Environment) {
 
 //
 func (s *Call) execute(env Environment) {
-	clap := NewApply(s.callee, s.arguments)
-	clap.evaluate(env)
+	//clap := NewApply(s.callee, s.arguments)
+	//clap.evaluate(env)
 }
 
 //
 func (s *Sequence) execute(env Environment) {
-	for e := s.items.Front(); e != nil; e = e.Next() {
-		e.Value.(Statement).execute(env)
-	}
+	//for e := s.items.Front(); e != nil; e = e.Next() {
+	//	e.Value.(Statement).execute(env)
+	//}
 }
 
 // Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func (p *Program) Execute() {
-	ep, found := p.members["Main"]
-	if found {
-		entry := NewCall(ep, list.New())
-		entry.execute(make(Environment))
-	}
+	//ep, found := p.members["Main"]
+	//if found {
+	//	entry := NewCall(ep, list.New())
+	//	entry.execute(make(Environment))
+	//}
 }

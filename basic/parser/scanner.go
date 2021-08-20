@@ -169,6 +169,10 @@ func (s *scanner) next() *lexeme {
 		kind = xLeftPar
 	case ')':
 		kind = xRightPar
+	case '[':
+		kind = xLeftBr
+	case ']':
+		kind = xRightBr
 	case ',':
 		kind = xComma
 	default:
