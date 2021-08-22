@@ -17,3 +17,7 @@ func TestUnary(t *testing.T) {
 	u0 := NewUnary("-", n0)
 	_ = u0
 }
+
+func TestLet(t *testing.T) {
+
+}

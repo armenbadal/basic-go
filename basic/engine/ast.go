@@ -43,12 +43,12 @@ func NewText(v string) *Text {
 
 // Array Զանգվածի լիտերալ
 type Array struct {
-	elements []interface{}
+	elements []Node
 }
 
 // NewArray Նոր ցուցակ օբյեկտ
 func NewArray(v []interface{}) *Array {
-	return &Array{elements: make([]interface{}, 0)}
+	return &Array{elements: make([]Node, 0)}
 }
 
 // Variable Փոփոխական
@@ -101,13 +101,13 @@ func (a *Apply) SetCallee(sb *Subroutine) {
 
 // Let Վերագրում
 type Let struct {
-	name *Symbol
+	name string // ? Variable
 	expr Node
 }
 
 // NewLet ...
 func NewLet(vn string, ex Node) *Let {
-	return &Let{name: NewSymbol(vn), expr: ex}
+	return &Let{name: vn, expr: ex}
 }
 
 // Input Ներմուծում

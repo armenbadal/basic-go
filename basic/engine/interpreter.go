@@ -9,9 +9,6 @@ type Value struct {
 	array   []*Value
 }
 
-// Environment Կատարման միջավայր
-type Environment map[string]*Value
-
 // Expression Արտահայտություններ
 type Expression interface {
 	evaluate(Environment) *Value
@@ -24,7 +21,7 @@ func (e *Value) evaluate(env Environment) *Value {
 
 //
 func (e *Variable) evaluate(env Environment) *Value {
-	return env[e.name]
+	return env.Get(e.name)
 }
 
 //
