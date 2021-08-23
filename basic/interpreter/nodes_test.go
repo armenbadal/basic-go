@@ -1,4 +1,4 @@
-package engine
+package interpreter
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 
 func TestPrimitives(t *testing.T) {
 	b0 := NewBoolean(true)
+
 	b1 := NewBoolean(false)
 
 	_ = b0

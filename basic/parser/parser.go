@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"basic/engine"
+	"basic/ast"
 	"bufio"
 	"container/list"
 	"errors"
@@ -17,16 +17,16 @@ type Parser struct {
 	lookahead *lexeme
 
 	// վերլուծության ծառի արմատ
-	program *engine.Program
+	program *ast.Program
 
 	// վերլուծված ենթածրագրերի ցուցակ
-	subrs map[string]*engine.Subroutine
+	subrs map[string]*ast.Subroutine
 
 	// անհայտ ենթածրագրիերի կանչերի ցուցակ
 	clinks map[string]*list.List
 
 	// ընթացիկ վերլուծվող ենթածրագիր
-	current *engine.Subroutine
+	current *ast.Subroutine
 }
 
 // NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -46,16 +46,16 @@ func NewParser(filename string) (*Parser, error) {
 	pars.scer.read()
 	pars.lookahead = pars.scer.next()
 
-	pars.subrs = make(map[string]*engine.Subroutine)
+	pars.subrs = make(map[string]*ast.Subroutine)
 	pars.clinks = make(map[string]*list.List)
 
-	pars.program = engine.NewProgram()
+	pars.program = ast.NewProgram()
 
 	return pars, nil
 }
 
 // Parse Վերլուծությունը սկսող արտաքին ֆունկցիա
-func (p *Parser) Parse() *engine.Program {
+func (p *Parser) Parse() *ast.Program {
 	// շարահյուսական սխալի արտածում
 	defer func() {
 		if err := recover(); err != nil {
@@ -102,12 +102,12 @@ func (p *Parser) parseNewLines() {
 //
 // Subroutine = 'SUB' IDENT ['(' [IDENT {',' IDENT}] ')'] Sequence 'END' SUB'.
 //
-func (p *Parser) parseSubroutine() *engine.Subroutine {
+func (p *Parser) parseSubroutine() *ast.Subroutine {
 	// վերնագրի վերլուծություն
 	p.match(xSubroutine)
 	name := p.lookahead.value
 	p.match(xIdent)
-	pars := make([]engine.Node, 0)
+	pars := make([]ast.Node, 0)
 	if p.has(xLeftPar) {
 		p.match(xLeftPar)
 		if p.has(xIdent) {
@@ -125,7 +125,7 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 	}
 
 	// նոր ենթածրագրի օբյեկտ
-	sub := engine.NewSubroutine(name, pars, nil)
+	sub := ast.NewSubroutine(name, pars, nil)
 
 	// մարմնի վերլուծություն
 	body := p.parseSequence()
@@ -140,9 +140,9 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 	if p.clinks[name] != nil {
 		for e := p.clinks[name].Front(); e != nil; e = e.Next() {
 			switch coa := e.Value.(type) {
-			case engine.Call:
+			case ast.Call:
 				coa.SetCallee(sub)
-			case engine.Apply:
+			case ast.Apply:
 				coa.SetCallee(sub)
 			}
 		}
@@ -156,12 +156,12 @@ func (p *Parser) parseSubroutine() *engine.Subroutine {
 //
 // Sequence = NewLines { Statement NewLines }.
 //
-func (p *Parser) parseSequence() engine.Node {
+func (p *Parser) parseSequence() ast.Node {
 	p.parseNewLines()
-	res := engine.NewSequence()
+	res := ast.NewSequence()
 loop:
 	for {
-		var stat engine.Node
+		var stat ast.Node
 		switch {
 		case p.has(xLet):
 			stat = p.parseLet()
@@ -190,34 +190,34 @@ loop:
 //
 // Statement = 'LET' IDENT '=' Expression.
 //
-func (p *Parser) parseLet() engine.Node {
+func (p *Parser) parseLet() ast.Node {
 	p.match(xLet)
 	vn := p.lookahead.value
 	p.match(xIdent)
 	p.match(xEq)
 	e0 := p.parseExpression()
-	return engine.NewLet(vn, e0)
+	return ast.NewLet(vn, e0)
 }
 
 // Ներմուծման հրամանի վերլուծությունը.
 //
 // Statement = 'INPUT' IDENT.
 //
-func (p *Parser) parseInput() engine.Node {
+func (p *Parser) parseInput() ast.Node {
 	p.match(xInput)
 	nam := p.lookahead.value
 	p.match(xIdent)
-	return engine.NewInput(nam)
+	return ast.NewInput(nam)
 }
 
 // Արտածման հրամանի վերլուծությունը.
 //
 // Statement = 'PRINT' Expression.
 //
-func (p *Parser) parsePrint() engine.Node {
+func (p *Parser) parsePrint() ast.Node {
 	p.match(xPrint)
 	e0 := p.parseExpression()
-	return engine.NewPrint(e0)
+	return ast.NewPrint(e0)
 }
 
 // Ճյուղավորման հրամանի վերլուծությունը.
@@ -227,19 +227,19 @@ func (p *Parser) parsePrint() engine.Node {
 //             [ 'ELSE' Sequence ]
 //             'END' 'IF'.
 //
-func (p *Parser) parseIf() engine.Node {
+func (p *Parser) parseIf() ast.Node {
 	p.match(xIf)
 	c0 := p.parseExpression()
 	p.match(xThen)
 	s0 := p.parseSequence()
-	res := engine.NewIf(c0, s0)
+	res := ast.NewIf(c0, s0)
 	ipe := res
 	for p.has(xElseIf) {
 		p.match(xElseIf)
 		c1 := p.parseExpression()
 		p.match(xThen)
 		s1 := p.parseSequence()
-		alt := engine.NewIf(c1, s1)
+		alt := ast.NewIf(c1, s1)
 		ipe.SetElse(alt)
 		ipe = alt
 	}
@@ -257,13 +257,13 @@ func (p *Parser) parseIf() engine.Node {
 //
 // Statement = 'WHILE' Expression Sequence 'END' 'WHILE'.
 //
-func (p *Parser) parseWhile() engine.Node {
+func (p *Parser) parseWhile() ast.Node {
 	p.match(xWhile)
 	c0 := p.parseExpression()
 	b0 := p.parseSequence()
 	p.match(xEnd)
 	p.match(xWhile)
-	return engine.NewWhile(c0, b0)
+	return ast.NewWhile(c0, b0)
 }
 
 // Պարամետրով ցիկլի վերլուծությունը
@@ -272,7 +272,7 @@ func (p *Parser) parseWhile() engine.Node {
 //             ['STEP' ['+'|'-'] NUMBER Sequence
 //             'END' 'FOR'.
 //
-func (p *Parser) parseFor() engine.Node {
+func (p *Parser) parseFor() ast.Node {
 	p.match(xFor)
 	param := p.lookahead.value
 	p.match(xIdent)
@@ -297,22 +297,22 @@ func (p *Parser) parseFor() engine.Node {
 			num = -num
 		}
 	}
-	s0 := engine.NewNumber(num)
+	s0 := ast.NewNumber(num)
 	dy := p.parseSequence()
 	p.match(xEnd)
 	p.match(xFor)
-	return engine.NewFor(param, b0, e0, s0, dy)
+	return ast.NewFor(param, b0, e0, s0, dy)
 }
 
 // Ենթածրագրի կանչի վերլուծությունը
 //
 // Statement = 'CALL' IDENT [Expression {',' Expression}].
 //
-func (p *Parser) parseCall() engine.Node {
+func (p *Parser) parseCall() ast.Node {
 	p.match(xCall)
 	name := p.lookahead.value
 	p.match(xIdent)
-	args := make([]engine.Node, 0)
+	args := make([]ast.Node, 0)
 	if p.has(xNumber, xText, xIdent, xSub, xNot, xLeftPar) {
 		e0 := p.parseExpression()
 		args = append(args, e0)
@@ -325,11 +325,11 @@ func (p *Parser) parseCall() engine.Node {
 
 	sp, defined := p.subrs[name]
 	if defined {
-		return engine.NewCall(sp, args)
+		return ast.NewCall(sp, args)
 	}
 
-	dummy := engine.NewSubroutine("__dummy__", nil, nil)
-	dcall := engine.NewCall(dummy, args)
+	dummy := ast.NewSubroutine("__dummy__", nil, nil)
+	dcall := ast.NewCall(dummy, args)
 	if p.clinks[name] == nil {
 		p.clinks[name] = list.New()
 	}
@@ -341,12 +341,12 @@ func (p *Parser) parseCall() engine.Node {
 //
 // Expression = Conjunction { OR Conjunction }.
 //
-func (p *Parser) parseExpression() engine.Node {
+func (p *Parser) parseExpression() ast.Node {
 	res := p.parseConjunction()
 	for p.has(xOr) {
 		p.match(xOr)
 		e0 := p.parseConjunction()
-		res = engine.NewBinary("OR", res, e0)
+		res = ast.NewBinary("OR", res, e0)
 	}
 	return res
 }
@@ -355,12 +355,12 @@ func (p *Parser) parseExpression() engine.Node {
 //
 // Conjunction = Equality { AND Equality }.
 //
-func (p *Parser) parseConjunction() engine.Node {
+func (p *Parser) parseConjunction() ast.Node {
 	res := p.parseEquality()
 	for p.has(xAnd) {
 		p.match(xAnd)
 		e0 := p.parseEquality()
-		res = engine.NewBinary("AND", res, e0)
+		res = ast.NewBinary("AND", res, e0)
 	}
 	return res
 }
@@ -369,7 +369,7 @@ func (p *Parser) parseConjunction() engine.Node {
 //
 // Equality = Comparison [('=' | '<>') Comparison].
 //
-func (p *Parser) parseEquality() engine.Node {
+func (p *Parser) parseEquality() ast.Node {
 	res := p.parseComparison()
 	if p.has(xEq, xNe) {
 		var opc string
@@ -382,7 +382,7 @@ func (p *Parser) parseEquality() engine.Node {
 			p.match(xNe)
 		}
 		e0 := p.parseComparison()
-		res = engine.NewBinary(opc, res, e0)
+		res = ast.NewBinary(opc, res, e0)
 	}
 	return res
 }
@@ -391,7 +391,7 @@ func (p *Parser) parseEquality() engine.Node {
 //
 // Comparison = Addition [('>' | '>=' | '<' | '<=') Addition].
 //
-func (p *Parser) parseComparison() engine.Node {
+func (p *Parser) parseComparison() ast.Node {
 	res := p.parseAddition()
 	if p.has(xGt, xGe, xLt, xLe) {
 		var opc string
@@ -410,7 +410,7 @@ func (p *Parser) parseComparison() engine.Node {
 			p.match(xLe)
 		}
 		e0 := p.parseAddition()
-		res = engine.NewBinary(opc, res, e0)
+		res = ast.NewBinary(opc, res, e0)
 	}
 	return res
 }
@@ -419,7 +419,7 @@ func (p *Parser) parseComparison() engine.Node {
 //
 // Addition = Multiplication {('+' | '-' | '&') Multiplication}.
 //
-func (p *Parser) parseAddition() engine.Node {
+func (p *Parser) parseAddition() ast.Node {
 	res := p.parseMultiplication()
 	for p.has(xAdd, xSub, xAmp) {
 		var opc string
@@ -435,7 +435,7 @@ func (p *Parser) parseAddition() engine.Node {
 			p.match(xAmp)
 		}
 		e0 := p.parseMultiplication()
-		res = engine.NewBinary(opc, res, e0)
+		res = ast.NewBinary(opc, res, e0)
 	}
 	return res
 }
@@ -444,7 +444,7 @@ func (p *Parser) parseAddition() engine.Node {
 //
 // Multiplication = Power {('*' | '/' | '\') Power}.
 //
-func (p *Parser) parseMultiplication() engine.Node {
+func (p *Parser) parseMultiplication() ast.Node {
 	res := p.parsePower()
 	for p.has(xMul, xDiv, xMod) {
 		var opc string
@@ -460,7 +460,7 @@ func (p *Parser) parseMultiplication() engine.Node {
 			p.match(xMod)
 		}
 		e0 := p.parsePower()
-		res = engine.NewBinary(opc, res, e0)
+		res = ast.NewBinary(opc, res, e0)
 	}
 	return res
 }
@@ -469,12 +469,12 @@ func (p *Parser) parseMultiplication() engine.Node {
 //
 // Power = Factor '^' Power.
 //
-func (p *Parser) parsePower() engine.Node {
+func (p *Parser) parsePower() ast.Node {
 	res := p.parseFactor()
 	if p.has(xPow) {
 		p.match(xPow)
 		e0 := p.parsePower()
-		res = engine.NewBinary("^", res, e0)
+		res = ast.NewBinary("^", res, e0)
 	}
 	return res
 }
@@ -486,20 +486,20 @@ func (p *Parser) parsePower() engine.Node {
 //        | NOT Factor
 //        | '(' Expression ')'.
 //
-func (p *Parser) parseFactor() engine.Node {
+func (p *Parser) parseFactor() ast.Node {
 	// թվային լիտերալ
 	if p.has(xNumber) {
 		lex := p.lookahead.value
 		p.match(xNumber)
 		val, _ := strconv.ParseFloat(lex, 64)
-		return engine.NewNumber(val)
+		return ast.NewNumber(val)
 	}
 
 	// տեքստային լիտերալ
 	if p.has(xText) {
 		val := p.lookahead.value
 		p.match(xText)
-		return engine.NewText(val)
+		return ast.NewText(val)
 	}
 
 	// ցուցակի լիտերալ
@@ -515,7 +515,7 @@ func (p *Parser) parseFactor() engine.Node {
 		p.match(xIdent)
 		if p.has(xLeftPar) {
 			p.match(xLeftPar)
-			args := make([]engine.Node, 0)
+			args := make([]ast.Node, 0)
 			if p.has(xNumber, xText, xIdent, xSub, xNot, xLeftPar) {
 				e0 := p.parseExpression()
 				args = append(args, e0)
@@ -526,9 +526,9 @@ func (p *Parser) parseFactor() engine.Node {
 				}
 			}
 			p.match(xRightPar)
-			return engine.NewApply(nil, args)
+			return ast.NewApply(nil, args)
 		}
-		return engine.NewVariable(name)
+		return ast.NewVariable(name)
 	}
 
 	// ունար գործողություն
@@ -543,7 +543,7 @@ func (p *Parser) parseFactor() engine.Node {
 			p.match(xNot)
 		}
 		res := p.parseFactor()
-		res = engine.NewUnary(opc, res)
+		res = ast.NewUnary(opc, res)
 		////res.Type = engine.T_NUMBER
 		return res
 	}

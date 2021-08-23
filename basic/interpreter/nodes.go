@@ -1,64 +1,56 @@
-package engine
+package interpreter
 
 // Node Աբստրակտ քերականական ծառի հանգույց
 type Node interface{}
 
-// Բազային տիպեր
-const (
-	BOOLEAN = 'B'
-	NUMBER  = 'N'
-	TEXT    = 'T'
-	ARRAY   = 'A'
-)
-
 // Boolean Բուլյան լիտերալ
 type Boolean struct {
-	value bool
+	Value bool
 }
 
 // NewBoolean Նոր բուլյան օբյեկտ
 func NewBoolean(v bool) *Boolean {
-	return &Boolean{value: v}
+	return &Boolean{Value: v}
 }
 
 // Number Թվային լիտերալ
 type Number struct {
-	value float64
+	Value float64
 }
 
 // NewNumber Նոր թվային օբյեկտ
 func NewNumber(v float64) *Number {
-	return &Number{value: v}
+	return &Number{Value: v}
 }
 
 // Text Տեքստային լիտերալ
 type Text struct {
-	value string
+	Value string
 }
 
 // NewText Նոր տեքստային օբյեկտ
 func NewText(v string) *Text {
-	return &Text{value: v}
+	return &Text{Value: v}
 }
 
 // Array Զանգվածի լիտերալ
 type Array struct {
-	elements []Node
+	Elements []Node
 }
 
 // NewArray Նոր ցուցակ օբյեկտ
-func NewArray(v []interface{}) *Array {
-	return &Array{elements: make([]Node, 0)}
+func NewArray(v []Node) *Array {
+	return &Array{Elements: make([]Node, 0)}
 }
 
 // Variable Փոփոխական
 type Variable struct {
-	name string
+	Name string
 }
 
 // NewVariable Ստեղծում է նոր փոփոխականի օբյեկտ
 func NewVariable(nm string) *Variable {
-	return &Variable{name: nm}
+	return &Variable{Name: nm}
 }
 
 // Unary Ունար գործողություն
@@ -90,7 +82,7 @@ type Apply struct {
 }
 
 // NewApply ...
-func NewApply(cl *Subroutine, ags []Node) *Apply {
+func NewApply(cl Node, ags []Node) *Apply {
 	return &Apply{callee: cl, arguments: ags}
 }
 
@@ -101,61 +93,61 @@ func (a *Apply) SetCallee(sb *Subroutine) {
 
 // Let Վերագրում
 type Let struct {
-	name string // ? Variable
-	expr Node
+	Place Node
+	Value Node
 }
 
 // NewLet ...
-func NewLet(vn string, ex Node) *Let {
-	return &Let{name: vn, expr: ex}
+func NewLet(pl Node, vl Node) *Let {
+	return &Let{Place: pl, Value: vl}
 }
 
 // Input Ներմուծում
 type Input struct {
-	varname string
+	Place Node
 }
 
 // NewInput ...
-func NewInput(vn string) *Input {
-	return &Input{varname: vn}
+func NewInput(pl Node) *Input {
+	return &Input{Place: pl}
 }
 
 // Print Արտածում
 type Print struct {
-	expr Node
+	Value Node
 }
 
 // NewPrint ...
-func NewPrint(ex Node) *Print {
-	return &Print{expr: ex}
+func NewPrint(vl Node) *Print {
+	return &Print{Value: vl}
 }
 
 // If Ճյուղավորում
 type If struct {
-	condition   Node
-	decision    Node
-	alternative Node
+	Condition   Node
+	Decision    Node
+	Alternative Node
 }
 
 // NewIf ...
 func NewIf(co Node, de Node) *If {
-	return &If{condition: co, decision: de}
+	return &If{Condition: co, Decision: de}
 }
 
 // SetElse ...
 func (s *If) SetElse(el Node) {
-	s.alternative = el
+	s.Alternative = el
 }
 
 // While Նախապայմանով ցիկլ
 type While struct {
-	condition Node
-	body      Node
+	Condition Node
+	Body      Node
 }
 
 // NewWhile ...
 func NewWhile(co Node, bo Node) *While {
-	return &While{condition: co, body: bo}
+	return &While{Condition: co, Body: bo}
 }
 
 // For Հաշվիչով ցիկլ
@@ -232,5 +224,6 @@ func NewProgram() *Program {
 
 // AddMember ...
 func (p *Program) AddMember(su Node) {
-	//p.members[su.name] = su
+	sn := su.(*Subroutine).name
+	p.members[sn] = su
 }
