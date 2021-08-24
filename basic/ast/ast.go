@@ -1,4 +1,4 @@
-package interpreter
+package ast
 
 // Node Աբստրակտ քերականական ծառի հանգույց
 type Node interface{}
