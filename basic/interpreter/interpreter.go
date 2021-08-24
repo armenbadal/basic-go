@@ -72,12 +72,56 @@ func evaluateVariable(v *ast.Variable, env *environment) *value {
 
 //
 func evaluateUnary(u *ast.Unary, env *environment) *value {
-	return nil
+	var result *value
+
+	switch u.Operation {
+	case "-":
+		rv := evaluate(u.Right, env)
+		if rv.kind != vNumber {
+			panic("Type error")
+		}
+		result = &value{kind: vNumber, number: -rv.number}
+	case "NOT":
+		rv := evaluate(u.Right, env)
+		if rv.kind != vBoolean {
+			panic("Type error")
+		}
+		result = &value{kind: vBoolean, boolean: !rv.boolean}
+	default:
+		panic("Unknown unarty operation")
+	}
+
+	return result
 }
 
 //
 func evaluateBinary(b *ast.Binary, env *environment) *value {
-	return nil
+	var result *value
+
+	rl := evaluate(b.Left, env)
+	rr := evaluate(b.Right, env)
+
+	switch b.Operation {
+	case "+", "-", "*", "/", "\\", "^":
+		if rl.kind != vNumber || rr.kind != vNumber {
+			panic("Type error")
+		}
+		// TODO
+	case "&":
+		if rl.kind != vText || rr.kind != vText {
+			panic("Type error")
+		}
+		result = &value{kind: vText, text: rl.text + rr.text}
+	case "AND", "OR":
+		if rl.kind != vBoolean || rr.kind != vBoolean {
+			panic("Type error")
+		}
+		// TODO
+	default:
+		panic("Unknown binary operation")
+	}
+
+	return result
 }
 
 //
@@ -98,6 +142,8 @@ func evaluate(n ast.Node, env *environment) *value {
 		result = evaluateText(e, env)
 	case *ast.Array:
 		result = evaluateArray(e, env)
+	case *ast.Variable:
+		result = evaluateVariable(e, env)
 	case *ast.Unary:
 		result = evaluateUnary(e, env)
 	case *ast.Binary:

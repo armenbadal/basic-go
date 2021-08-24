@@ -45,3 +45,15 @@ func TestArray(t *testing.T) {
 		t.Error("Failed to evaluate array object")
 	}
 }
+
+func TestVariable(t *testing.T) {
+	env := &environment{}
+	env.openScope()
+	env.set("x", &value{kind: vBoolean, boolean: true})
+
+	v0 := &ast.Variable{Name: "x"}
+	r0 := evaluate(v0, env)
+	if r0.kind != vBoolean || !r0.boolean {
+		t.Error("Failed to evaluate variable object")
+	}
+}

@@ -1,5 +1,13 @@
 package interpreter
 
+type binary func(l, r *value) *value
+
+var operations = map[string]binary{
+	"+": func(r, l *value) *value {
+		return &value{kind: vNumber, number: l.number + r.number}
+	},
+}
+
 // import (
 // 	"math"
 // )

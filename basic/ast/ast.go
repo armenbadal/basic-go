@@ -55,19 +55,19 @@ func NewVariable(nm string) *Variable {
 
 // Unary Ունար գործողություն
 type Unary struct {
-	oper string
-	expr Node
+	Operation string
+	Right     Node
 }
 
 // NewUnary Նոր միտեղանի գործողություն
 func NewUnary(op string, eo Node) *Unary {
-	return &Unary{oper: op, expr: eo}
+	return &Unary{Operation: op, Right: eo}
 }
 
 // Binary Բինար գործողություն
 type Binary struct {
-	oper         string
-	expro, expri Node
+	Operation   string
+	Left, Right Node
 }
 
 // NewBinary Նոր երկտեղանի գործողություն
