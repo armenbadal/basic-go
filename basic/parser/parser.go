@@ -25,9 +25,6 @@ type Parser struct {
 
 	// անհայտ ենթածրագրիերի կանչերի ցուցակ
 	clinks map[string]*list.List
-
-	// ընթացիկ վերլուծվող ենթածրագիր
-	current *ast.Subroutine
 }
 
 // NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -484,10 +481,10 @@ func (p *Parser) parseMultiplication() ast.Node {
 
 // Ատիճան բարձրացնելու գործողությունը
 //
-// Power = Factor '^' Power.
+// Power = Index ['^' Power].
 //
 func (p *Parser) parsePower() ast.Node {
-	res := p.parseFactor()
+	res := p.parseIndex()
 	if p.has(xPow) {
 		p.match(xPow)
 		e0 := p.parsePower()
@@ -496,9 +493,25 @@ func (p *Parser) parsePower() ast.Node {
 	return res
 }
 
+// Ինդեքսավորման գործողությունը
+//
+// Index = Factor {'[' Expression ']'}.
+//
+func (p *Parser) parseIndex() ast.Node {
+	res := p.parseFactor()
+	for p.has(xLeftBr) {
+		p.match(xLeftBr)
+		e0 := p.parseExpression()
+		p.match(xRightBr)
+		res = ast.NewBinary("[]", res, e0)
+	}
+	return res
+}
+
 // Պարզագույն արտահայտությունների վերլուծությունը
 //
-// Factor = NUMBER | TEXT | IDENT
+// Factor = TRUE | FALSE | NUMBER | TEXT | IDENT
+//        | '[' [Expression {',' Expression}] ']'
 //        | SUB Factor
 //        | NOT Factor
 //        | '(' Expression ')'.
@@ -526,7 +539,7 @@ func (p *Parser) parseFactor() ast.Node {
 		return ast.NewText(val)
 	}
 
-	// ցուցակի լիտերալ
+	// զանգվածի լիտերալ
 	if p.has(xLeftBr) {
 		elems := make([]ast.Node, 0)
 		p.match(xLeftBr)
@@ -548,7 +561,7 @@ func (p *Parser) parseFactor() ast.Node {
 		if p.has(xLeftPar) {
 			p.match(xLeftPar)
 			args := make([]ast.Node, 0)
-			if p.has(xNumber, xText, xIdent, xSub, xNot, xLeftPar) {
+			if p.isExprFirst() {
 				e0 := p.parseExpression()
 				args = append(args, e0)
 				for p.has(xComma) {
@@ -593,6 +606,11 @@ func (p *Parser) parseFactor() ast.Node {
 //
 func (p *Parser) has(tokens ...int) bool {
 	return p.lookahead.is(tokens...)
+}
+
+//
+func (p *Parser) isExprFirst() bool {
+	return p.has(xTrue, xFalse, xNumber, xText, xIdent, xSub, xNot, xLeftPar, xLeftBr)
 }
 
 //
