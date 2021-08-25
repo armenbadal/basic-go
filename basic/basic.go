@@ -6,11 +6,11 @@ import (
 )
 
 func main() {
-	fmt.Println("Բեյսիկ-Փ լեզվի իրականացումը Go լեզվով։")
+	fmt.Println("Բալ ալգորիթմական լեզվի իրականացումը Go լեզվով։")
 
-	pars, err := parser.NewParser("../examples/ex0.bas")
+	pars, err := parser.NewParser("../examples/ex00.bas")
 	if nil == err {
 		tree := pars.Parse()
-		print(tree)
+		println(tree)
 	}
 }

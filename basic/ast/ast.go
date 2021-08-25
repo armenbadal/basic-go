@@ -72,23 +72,33 @@ type Binary struct {
 
 // NewBinary Նոր երկտեղանի գործողություն
 func NewBinary(op string, exo, exi Node) *Binary {
-	return &Binary{oper: op, expro: exo, expri: exi}
+	return &Binary{Operation: op, Left: exo, Right: exi}
 }
 
 // Apply Ֆունկցիայի կիրառում
 type Apply struct {
-	callee    Node
-	arguments []Node
+	Callee    Node
+	Arguments []Node
 }
 
 // NewApply ...
 func NewApply(cl Node, ags []Node) *Apply {
-	return &Apply{callee: cl, arguments: ags}
+	return &Apply{Callee: cl, Arguments: ags}
 }
 
 // SetCallee ...
-func (a *Apply) SetCallee(sb *Subroutine) {
-	a.callee = sb
+func (a *Apply) SetCallee(sb Node) {
+	a.Callee = sb
+}
+
+// Dim զանգվածի սահմանում
+type Dim struct {
+	Name string
+	Size Node
+}
+
+func NewDim(nm string, sz Node) *Dim {
+	return &Dim{Name: nm, Size: sz}
 }
 
 // Let Վերագրում
@@ -166,50 +176,50 @@ func NewFor(p string, b, e, s Node, d Node) *For {
 
 // Call Ենթածրագիր կանչ
 type Call struct {
-	callee    Node
-	arguments []Node
+	Callee    Node
+	Arguments []Node
 }
 
 // NewCall ...
 func NewCall(cl Node, ags []Node) *Call {
-	return &Call{callee: cl, arguments: ags}
+	return &Call{Callee: cl, Arguments: ags}
 }
 
 // SetCallee ...
 func (c *Call) SetCallee(sb *Subroutine) {
-	c.callee = sb
+	c.Callee = sb
 }
 
 // Sequence Հրամանների հաջորդականություն
 type Sequence struct {
-	items []Node
+	Items []Node
 }
 
 // NewSequence ...
 func NewSequence() *Sequence {
-	return &Sequence{items: make([]Node, 0)}
+	return &Sequence{Items: make([]Node, 0)}
 }
 
 // AddItem ...
 func (s *Sequence) AddItem(e Node) {
-	s.items = append(s.items, e)
+	s.Items = append(s.Items, e)
 }
 
 // Subroutine Ենթածրագիր
 type Subroutine struct {
-	name       string
-	parameters []Node
-	body       Node
+	Name       string
+	Parameters []Node
+	Body       Node
 }
 
 // NewSubroutine Նոր ենթածրագրի օբյեկտ
 func NewSubroutine(nm string, pars []Node, dy Node) *Subroutine {
-	return &Subroutine{name: nm, parameters: pars, body: dy}
+	return &Subroutine{Name: nm, Parameters: pars, Body: dy}
 }
 
 // SetBody Լրացնել ենթածրագրի մարմինը
 func (s *Subroutine) SetBody(q Node) {
-	s.body = q
+	s.Body = q
 }
 
 // Program Ծրագիր
@@ -224,6 +234,6 @@ func NewProgram() *Program {
 
 // AddMember ...
 func (p *Program) AddMember(su Node) {
-	sn := su.(*Subroutine).name
+	sn := su.(*Subroutine).Name
 	p.members[sn] = su
 }

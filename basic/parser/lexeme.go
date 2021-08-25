@@ -1,15 +1,16 @@
 package parser
 
-import "fmt"
-
 const (
 	xNone = iota
 
 	xNumber // թիվ
 	xText   // տեքստ
 	xIdent  // իդենտիֆիկատոր
+	xTrue   // TRUE
+	xFalse  // FALSE
 
 	xSubroutine // SUB
+	xDim        // DIM
 	xLet        // LET
 	xInput      // INPUT
 	xPrint      // PRINT
@@ -66,8 +67,4 @@ func (l *lexeme) is(exps ...int) bool {
 		}
 	}
 	return false
-}
-
-func (l *lexeme) ToString() string {
-	return fmt.Sprintf("<%d,\t%s,\t%d>", l.token, l.value, l.line)
 }

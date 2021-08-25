@@ -5,41 +5,6 @@ import (
 	"fmt"
 )
 
-// Պարզ տիպեր
-const (
-	vUndefined = '?'
-	vBoolean   = 'B'
-	vNumber    = 'N'
-	vText      = 'T'
-	vArray     = 'A'
-)
-
-// Value Ունիվերսալ արժեք
-type value struct {
-	kind    rune
-	boolean bool
-	number  float64
-	text    string
-	array   []*value
-}
-
-func (v *value) toString() string {
-	res := "<undefined>"
-	switch v.kind {
-	case vBoolean:
-		res = fmt.Sprint(v.boolean)
-	case vNumber:
-		res = fmt.Sprint(v.number)
-	case vText:
-		res = v.text
-	case vArray:
-		// TODO create string view of array
-		res = "[]"
-	case vUndefined:
-	}
-	return res
-}
-
 //
 func evaluateBoolean(b *ast.Boolean, env *environment) *value {
 	return &value{kind: vBoolean, boolean: b.Value}
@@ -117,6 +82,12 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 			panic("Type error")
 		}
 		// TODO
+	case "[]":
+		if rl.kind != vArray || rr.kind != vNumber {
+			panic("Type error")
+		}
+		// TODO check range
+		result = rl.array[int(rr.number)]
 	default:
 		panic("Unknown binary operation")
 	}
@@ -153,6 +124,16 @@ func evaluate(n ast.Node, env *environment) *value {
 	}
 
 	return result
+}
+
+//
+func executeDim(d *ast.Dim, env *environment) {
+	sz := evaluate(d.Size, env)
+	if !sz.isNumber() {
+		panic("Type error")
+	}
+	arr := &value{kind: vArray, array: make([]*value, int(sz.number), int(sz.number))}
+	env.set(d.Name, arr)
 }
 
 //
@@ -217,6 +198,8 @@ func executeSequence(s *ast.Sequence, env *environment) {
 //
 func execute(n ast.Node, env *environment) {
 	switch s := n.(type) {
+	case *ast.Dim:
+		executeDim(s, env)
 	case *ast.Let:
 		executeLet(s, env)
 	case *ast.Input:

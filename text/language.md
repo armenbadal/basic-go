@@ -16,8 +16,8 @@ Subroutine = 'SUB' IDENT ['(' [IDENT {',' IDENT}] ')'] Sequence 'END' SUB'.
 ```
 
 Ենթածրագրերի մարմնում գործողությունները նկարագրվում են որպես _հրամանների հաջորդականություն_՝
-`Sequence`։ Հաջորդականությունը սկսվում է մեկ կամ ավելի նոր տեղերի նիշերվ, իսկ ամեն մի հրամանին
-նորից պետք է հաջորդի մեկ կամ ավելի նոր տողեր։
+`Sequence`։ Հաջորդականությունը սկսվում է մեկ կամ ավելի նոր տողերի նիշերվ, իսկ ամեն մի հրամանին
+նորից պետք է հաջորդեն մեկ կամ ավելի նոր տողեր։
 
 ```
 Sequence = NewLines { Statement NewLines }.
@@ -27,18 +27,18 @@ Sequence = NewLines { Statement NewLines }.
 NewLines = NEWLINE { NEWLINE }.
 ```
 
-
-// Statement = 'LET' IDENT '=' Expression
-//           | 'INPUT' IDENT
-//           | 'PRINT' Expression
-//           | 'IF' Expression 'THEN' Sequence
-//             { 'ELSEIF' Expression 'THEN' Sequence }
-//             [ 'ELSE' Sequence ]
-//             'END' 'IF'
-//           | 'WHILE' Expression Sequence 'END' 'WHILE'
-//           | 'FOR' IDENT '=' Expression 'TO' Expression
-//             ['STEP' ['+'|'-'] NUMBER Sequence
-//             'END' 'FOR'
-//           | 'CALL' IDENT [Expression {',' Expression}]
-//           .
-
+```
+Statement = 'LET' IDENT '=' Expression
+          | 'INPUT' IDENT
+          | 'PRINT' Expression
+          | 'IF' Expression 'THEN' Sequence
+            { 'ELSEIF' Expression 'THEN' Sequence }
+            [ 'ELSE' Sequence ]
+            'END' 'IF'
+          | 'WHILE' Expression Sequence 'END' 'WHILE'
+          | 'FOR' IDENT '=' Expression 'TO' Expression
+            ['STEP' ['+'|'-'] NUMBER Sequence
+            'END' 'FOR'
+          | 'CALL' IDENT [Expression {',' Expression}]
+           .
+```

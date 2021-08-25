@@ -57,3 +57,19 @@ func TestVariable(t *testing.T) {
 		t.Error("Failed to evaluate variable object")
 	}
 }
+
+func TestUnary(t *testing.T) {
+	b0 := &ast.Boolean{Value: false}
+	u0 := &ast.Unary{Operation: "NOT", Right: b0}
+	r0 := evaluate(u0, nil)
+	if r0.kind != vBoolean || !r0.boolean {
+		t.Error("Failed to evaluate unary object")
+	}
+
+	n1 := &ast.Number{Value: 3.1415}
+	u1 := &ast.Unary{Operation: "-", Right: n1}
+	r1 := evaluate(u1, nil)
+	if r1.kind != vNumber || r1.number != -3.1415 {
+		t.Error("Failed to evaluate unary object")
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Parser Շարահյուսական վերլուծիչի ստրուկտուրան։
@@ -34,7 +35,7 @@ func NewParser(filename string) (*Parser, error) {
 	// բացել ֆայլային հոսքը
 	rd, er := os.Open(filename)
 	if er != nil {
-		return nil, errors.New("Ֆայլը բացելը ձախողվեց")
+		return nil, errors.New("ֆայլը բացելը ձախողվեց")
 	}
 	defer rd.Close()
 
@@ -163,6 +164,8 @@ loop:
 	for {
 		var stat ast.Node
 		switch {
+		case p.has(xDim):
+			stat = p.parseDim()
 		case p.has(xLet):
 			stat = p.parseLet()
 		case p.has(xInput):
@@ -184,6 +187,20 @@ loop:
 		res.AddItem(stat)
 	}
 	return res
+}
+
+// Վերլուծել զանգվածի սահմանման հրամանը
+//
+// Statement = 'DIM' IDENT '[' Expression ']'.
+//
+func (p *Parser) parseDim() ast.Node {
+	p.match(xDim)
+	nm := p.lookahead.value
+	p.match(xIdent)
+	p.match(xLeftBr)
+	sz := p.parseExpression()
+	p.match(xRightBr)
+	return ast.NewDim(nm, sz)
 }
 
 // Վերլուծել վերագրման հրամանը
@@ -487,6 +504,13 @@ func (p *Parser) parsePower() ast.Node {
 //        | '(' Expression ')'.
 //
 func (p *Parser) parseFactor() ast.Node {
+	// տրամաբանական լիտերալ TRUE կամ FALSE
+	if p.has(xTrue, xFalse) {
+		lex := strings.ToUpper(p.lookahead.value)
+		p.match(p.lookahead.token)
+		return ast.NewBoolean(lex == "TRUE")
+	}
+
 	// թվային լիտերալ
 	if p.has(xNumber) {
 		lex := p.lookahead.value
@@ -504,9 +528,17 @@ func (p *Parser) parseFactor() ast.Node {
 
 	// ցուցակի լիտերալ
 	if p.has(xLeftBr) {
+		elems := make([]ast.Node, 0)
 		p.match(xLeftBr)
+		e := p.parseExpression()
+		elems = append(elems, e)
+		for p.has(xComma) {
+			p.match(xComma)
+			e := p.parseExpression()
+			elems = append(elems, e)
+		}
 		p.match(xRightBr)
-
+		return ast.NewArray(elems)
 	}
 
 	// իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
@@ -544,7 +576,6 @@ func (p *Parser) parseFactor() ast.Node {
 		}
 		res := p.parseFactor()
 		res = ast.NewUnary(opc, res)
-		////res.Type = engine.T_NUMBER
 		return res
 	}
 

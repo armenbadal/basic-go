@@ -8,6 +8,7 @@ import (
 // ծառայողական բառեր
 var keywords = map[string]int{
 	"SUB":    xSubroutine,
+	"DIM":    xDim,
 	"LET":    xLet,
 	"INPUT":  xInput,
 	"PRINT":  xPrint,
@@ -23,7 +24,9 @@ var keywords = map[string]int{
 	"END":    xEnd,
 	"AND":    xAnd,
 	"OR":     xOr,
-	"NOT":    xNot}
+	"NOT":    xNot,
+	"TRUE":   xTrue,
+	"FALSE":  xFalse}
 
 // Բառային վերլուծիչի ստրուկտուրան
 type scanner struct {
