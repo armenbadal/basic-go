@@ -1,4 +1,4 @@
 
 SUB Main
-    LET x = arr[0 + i]
+    LET x = f(0, y)
 END SUB

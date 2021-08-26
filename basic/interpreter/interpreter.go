@@ -42,13 +42,13 @@ func evaluateUnary(u *ast.Unary, env *environment) *value {
 	switch u.Operation {
 	case "-":
 		rv := evaluate(u.Right, env)
-		if rv.kind != vNumber {
+		if !rv.isNumber() {
 			panic("Type error")
 		}
 		result = &value{kind: vNumber, number: -rv.number}
 	case "NOT":
 		rv := evaluate(u.Right, env)
-		if rv.kind != vBoolean {
+		if !rv.isBoolean() {
 			panic("Type error")
 		}
 		result = &value{kind: vBoolean, boolean: !rv.boolean}
@@ -68,22 +68,22 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 
 	switch b.Operation {
 	case "+", "-", "*", "/", "\\", "^":
-		if rl.kind != vNumber || rr.kind != vNumber {
+		if !rl.isNumber() || !rr.isNumber() {
 			panic("Type error")
 		}
 		// TODO
 	case "&":
-		if rl.kind != vText || rr.kind != vText {
+		if !rl.isText() || !rr.isText() {
 			panic("Type error")
 		}
 		result = &value{kind: vText, text: rl.text + rr.text}
 	case "AND", "OR":
-		if rl.kind != vBoolean || rr.kind != vBoolean {
+		if !rl.isBoolean() || !rr.isBoolean() {
 			panic("Type error")
 		}
 		// TODO
 	case "[]":
-		if rl.kind != vArray || rr.kind != vNumber {
+		if !rl.isArray() || !rr.isNumber() {
 			panic("Type error")
 		}
 		// TODO check range

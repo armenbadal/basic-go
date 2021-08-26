@@ -510,7 +510,9 @@ func (p *Parser) parseIndex() ast.Node {
 
 // Պարզագույն արտահայտությունների վերլուծությունը
 //
-// Factor = TRUE | FALSE | NUMBER | TEXT | IDENT
+// Factor = TRUE | FALSE | NUMBER | TEXT
+//        | IDENT
+//        | IDENT '(' [Expression {',' Expression}] ')'
 //        | '[' [Expression {',' Expression}] ']'
 //        | SUB Factor
 //        | NOT Factor
