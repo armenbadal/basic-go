@@ -97,6 +97,7 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 
 //
 func evaluateApply(a *ast.Apply, env *environment) *value {
+	// TODO: if
 	return nil
 }
 

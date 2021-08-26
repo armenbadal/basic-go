@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"container/list"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -519,90 +520,113 @@ func (p *Parser) parseIndex() ast.Node {
 //        | '(' Expression ')'.
 //
 func (p *Parser) parseFactor() ast.Node {
-	// տրամաբանական լիտերալ TRUE կամ FALSE
-	if p.has(xTrue, xFalse) {
-		lex := strings.ToUpper(p.lookahead.value)
-		p.match(p.lookahead.token)
-		return ast.NewBoolean(lex == "TRUE")
+	var result ast.Node
+
+	switch {
+	case p.has(xTrue, xFalse):
+		result = p.parseTrueOrFalse()
+	case p.has(xNumber):
+		result = p.parseNumber()
+	case p.has(xText):
+		result = p.parseText()
+	case p.has(xLeftBr):
+		result = p.parseArray()
+	case p.has(xIdent):
+		result = p.parseIdentOrApply()
+	case p.has(xSub, xNot):
+		result = p.parseUnary()
+	case p.has(xLeftPar):
+		result = p.parseGrouping()
+	default:
+		panic("պարզագույն արտահայտության սխալ")
 	}
 
-	// թվային լիտերալ
-	if p.has(xNumber) {
-		lex := p.lookahead.value
-		p.match(xNumber)
-		val, _ := strconv.ParseFloat(lex, 64)
-		return ast.NewNumber(val)
-	}
+	return result
+}
 
-	// տեքստային լիտերալ
-	if p.has(xText) {
-		val := p.lookahead.value
-		p.match(xText)
-		return ast.NewText(val)
-	}
+// տրամաբանական լիտերալ, TRUE կամ FALSE
+func (p *Parser) parseTrueOrFalse() ast.Node {
+	lex := strings.ToUpper(p.lookahead.value)
+	p.match(p.lookahead.token)
+	return ast.NewBoolean(lex == "TRUE")
+}
 
-	// զանգվածի լիտերալ
-	if p.has(xLeftBr) {
-		elems := make([]ast.Node, 0)
-		p.match(xLeftBr)
+// թվային լիտերալ
+func (p *Parser) parseNumber() ast.Node {
+	lex := p.lookahead.value
+	p.match(xNumber)
+	val, _ := strconv.ParseFloat(lex, 64)
+	return ast.NewNumber(val)
+}
+
+// տեքստային լիտերալ
+func (p *Parser) parseText() ast.Node {
+	val := p.lookahead.value
+	p.match(xText)
+	return ast.NewText(val)
+}
+
+// զանգվածի լիտերալ
+func (p *Parser) parseArray() ast.Node {
+	elems := make([]ast.Node, 0)
+	p.match(xLeftBr)
+	e := p.parseExpression()
+	elems = append(elems, e)
+	for p.has(xComma) {
+		p.match(xComma)
 		e := p.parseExpression()
 		elems = append(elems, e)
-		for p.has(xComma) {
-			p.match(xComma)
-			e := p.parseExpression()
-			elems = append(elems, e)
-		}
-		p.match(xRightBr)
-		return ast.NewArray(elems)
 	}
+	p.match(xRightBr)
+	return ast.NewArray(elems)
+}
 
-	// իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
-	if p.has(xIdent) {
-		name := p.lookahead.value
-		p.match(xIdent)
-		if p.has(xLeftPar) {
-			p.match(xLeftPar)
-			args := make([]ast.Node, 0)
-			if p.isExprFirst() {
-				e0 := p.parseExpression()
-				args = append(args, e0)
-				for p.has(xComma) {
-					p.match(xComma)
-					e1 := p.parseExpression()
-					args = append(args, e1)
-				}
-			}
-			p.match(xRightPar)
-			return ast.NewApply(nil, args)
-		}
-		return ast.NewVariable(name)
-	}
+// իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
+func (p *Parser) parseIdentOrApply() ast.Node {
+	name := p.lookahead.value
+	p.match(xIdent)
 
-	// ունար գործողություն
-	if p.has(xSub, xNot) {
-		var opc string
-		switch p.lookahead.token {
-		case xSub:
-			opc = "-"
-			p.match(xSub)
-		case xNot:
-			opc = "NOT"
-			p.match(xNot)
-		}
-		res := p.parseFactor()
-		res = ast.NewUnary(opc, res)
-		return res
-	}
-
-	// փակագծեր
 	if p.has(xLeftPar) {
 		p.match(xLeftPar)
-		res := p.parseExpression()
+		args := make([]ast.Node, 0)
+		if p.isExprFirst() {
+			e0 := p.parseExpression()
+			args = append(args, e0)
+			for p.has(xComma) {
+				p.match(xComma)
+				e1 := p.parseExpression()
+				args = append(args, e1)
+			}
+		}
 		p.match(xRightPar)
-		return res
+		return ast.NewApply(nil, args)
 	}
 
-	return nil
+	return ast.NewVariable(name)
+}
+
+// ունար գործողություն
+func (p *Parser) parseUnary() ast.Node {
+	var opc string
+	switch p.lookahead.token {
+	case xSub:
+		opc = "-"
+		p.match(xSub)
+	case xNot:
+		opc = "NOT"
+		p.match(xNot)
+	}
+	res := p.parseFactor()
+	res = ast.NewUnary(opc, res)
+	return res
+}
+
+// փակագծեր
+func (p *Parser) parseGrouping() ast.Node {
+	p.match(xLeftPar)
+	res := p.parseExpression()
+	p.match(xRightPar)
+	return res
 }
 
 //
@@ -620,8 +644,6 @@ func (p *Parser) match(exp int) {
 	if p.lookahead.is(exp) {
 		p.lookahead = p.scer.next()
 	} else {
-		println("Տող.")
-		println(p.lookahead.line)
-		panic("Վերլուծության սխալ")
+		panic(fmt.Sprintf("Տող %d. Վերլուծության սխալ\n", p.lookahead.line))
 	}
 }

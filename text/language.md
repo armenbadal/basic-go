@@ -42,3 +42,15 @@ Statement = 'LET' IDENT '=' Expression
           | 'CALL' IDENT [Expression {',' Expression}]
            .
 ```
+
+```
+Expression = Conjunction { 'OR' Conjunction }.
+Conjunction = Equality { 'AND' Equality }.
+Equality = Comparison [ ('=' | '<>') Comparison ].
+Comparison = Addition [ ('<' | '<=' | '>' | '>=') Addition ].
+Addition = Multiplication { ('+' | '-' | '&') Multiplication }.
+Multiplication = Power { ('*' | '/' | '\') Power }.
+Power = Subscript [ '^' Power ].
+Subscript = Factor { '[' Expression ']' }.
+Factor = 
+```
