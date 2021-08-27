@@ -40,7 +40,7 @@ type Array struct {
 
 // NewArray Նոր ցուցակ օբյեկտ
 func NewArray(v []Node) *Array {
-	return &Array{Elements: make([]Node, 0)}
+	return &Array{Elements: v}
 }
 
 // Variable Փոփոխական
@@ -162,16 +162,16 @@ func NewWhile(co Node, bo Node) *While {
 
 // For Հաշվիչով ցիկլ
 type For struct {
-	parameter string
-	begin     Node
-	end       Node
-	step      Node
-	body      Node
+	Parameter Node
+	Begin     Node
+	End       Node
+	Step      Node
+	Body      Node
 }
 
 // NewFor ...
-func NewFor(p string, b, e, s Node, d Node) *For {
-	return &For{parameter: p, begin: b, end: e, step: s, body: d}
+func NewFor(p, b, e, s Node, d Node) *For {
+	return &For{Parameter: p, Begin: b, End: e, Step: s, Body: d}
 }
 
 // Call Ենթածրագիր կանչ
@@ -224,16 +224,16 @@ func (s *Subroutine) SetBody(q Node) {
 
 // Program Ծրագիր
 type Program struct {
-	members map[string]Node
+	Members map[string]Node
 }
 
 // NewProgram ...
 func NewProgram() *Program {
-	return &Program{members: make(map[string]Node)}
+	return &Program{Members: make(map[string]Node)}
 }
 
 // AddMember ...
 func (p *Program) AddMember(su Node) {
 	sn := su.(*Subroutine).Name
-	p.members[sn] = su
+	p.Members[sn] = su
 }

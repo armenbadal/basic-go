@@ -39,8 +39,7 @@ Statement = 'LET' IDENT '=' Expression
           | 'FOR' IDENT '=' Expression 'TO' Expression
             ['STEP' ['+'|'-'] NUMBER Sequence
             'END' 'FOR'
-          | 'CALL' IDENT [Expression {',' Expression}]
-           .
+          | 'CALL' IDENT [Expression {',' Expression}].
 ```
 
 ```
