@@ -3,7 +3,6 @@ package parser
 import (
 	"basic/ast"
 	"bufio"
-	"container/list"
 	"errors"
 	"fmt"
 	"os"
@@ -20,12 +19,6 @@ type Parser struct {
 
 	// վերլուծության ծառի արմատ
 	program *ast.Program
-
-	// վերլուծված ենթածրագրերի ցուցակ
-	subrs map[string]*ast.Subroutine
-
-	// անհայտ ենթածրագրիերի կանչերի ցուցակ
-	clinks map[string]*list.List
 }
 
 // NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -44,9 +37,6 @@ func NewParser(filename string) (*Parser, error) {
 	pars.scer.line = 1
 	pars.scer.read()
 	pars.lookahead = pars.scer.next()
-
-	pars.subrs = make(map[string]*ast.Subroutine)
-	pars.clinks = make(map[string]*list.List)
 
 	pars.program = ast.NewProgram()
 
@@ -132,21 +122,6 @@ func (p *Parser) parseSubroutine() *ast.Subroutine {
 
 	p.match(xEnd)
 	p.match(xSubroutine)
-
-	p.subrs[name] = sub
-
-	// գտնել և լուծել «ազատ» հղումները
-	if p.clinks[name] != nil {
-		for e := p.clinks[name].Front(); e != nil; e = e.Next() {
-			switch coa := e.Value.(type) {
-			case ast.Call:
-				coa.SetCallee(sub)
-			case ast.Apply:
-				coa.SetCallee(sub)
-			}
-		}
-		delete(p.clinks, name)
-	}
 
 	return sub
 }
@@ -328,7 +303,7 @@ func (p *Parser) parseCall() ast.Node {
 	name := p.lookahead.value
 	p.match(xIdent)
 	args := make([]ast.Node, 0)
-	if p.has(xNumber, xText, xIdent, xSub, xNot, xLeftPar) {
+	if p.isExprFirst() {
 		e0 := p.parseExpression()
 		args = append(args, e0)
 		for p.has(xComma) {
@@ -338,18 +313,8 @@ func (p *Parser) parseCall() ast.Node {
 		}
 	}
 
-	sp, defined := p.subrs[name]
-	if defined {
-		return ast.NewCall(sp, args)
-	}
-
-	dummy := ast.NewSubroutine("__dummy__", nil, nil)
-	dcall := ast.NewCall(dummy, args)
-	if p.clinks[name] == nil {
-		p.clinks[name] = list.New()
-	}
-	p.clinks[name].PushBack(dcall)
-	return dcall
+	_ = name
+	return ast.NewCall(nil, args)
 }
 
 // Արտահայտություն
