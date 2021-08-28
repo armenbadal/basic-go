@@ -32,8 +32,6 @@ func TestUnary(t *testing.T) {
 	}
 
 	u1 := NewUnary("NOT", NewBoolean(false))
-	e := u1.String()
-	_ = e
 	if u1.String() != "NOT FALSE" {
 		t.Error("failed")
 	}

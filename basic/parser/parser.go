@@ -96,7 +96,7 @@ func (p *Parser) parseSubroutine() *ast.Subroutine {
 	p.match(xSubroutine)
 	name := p.lookahead.value
 	p.match(xIdent)
-	pars := make([]ast.Node, 0)
+	pars := make([]string, 0)
 	if p.has(xLeftPar) {
 		p.match(xLeftPar)
 		if p.has(xIdent) {
@@ -313,8 +313,7 @@ func (p *Parser) parseCall() ast.Node {
 		}
 	}
 
-	_ = name
-	return ast.NewCall(nil, args)
+	return ast.NewCall(name, args)
 }
 
 // Արտահայտություն
@@ -564,7 +563,7 @@ func (p *Parser) parseIdentOrApply() ast.Node {
 			}
 		}
 		p.match(xRightPar)
-		return ast.NewApply(nil, args)
+		return ast.NewApply(name, args)
 	}
 
 	return ast.NewVariable(name)

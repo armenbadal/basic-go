@@ -77,18 +77,13 @@ func NewBinary(op string, exo, exi Node) *Binary {
 
 // Apply Ֆունկցիայի կիրառում
 type Apply struct {
-	Callee    Node
+	Callee    string
 	Arguments []Node
 }
 
 // NewApply ...
-func NewApply(cl Node, ags []Node) *Apply {
+func NewApply(cl string, ags []Node) *Apply {
 	return &Apply{Callee: cl, Arguments: ags}
-}
-
-// SetCallee ...
-func (a *Apply) SetCallee(sb Node) {
-	a.Callee = sb
 }
 
 // Dim զանգվածի սահմանում
@@ -176,18 +171,13 @@ func NewFor(p, b, e, s Node, d Node) *For {
 
 // Call Ենթածրագիր կանչ
 type Call struct {
-	Callee    Node
+	Callee    string
 	Arguments []Node
 }
 
 // NewCall ...
-func NewCall(cl Node, ags []Node) *Call {
+func NewCall(cl string, ags []Node) *Call {
 	return &Call{Callee: cl, Arguments: ags}
-}
-
-// SetCallee ...
-func (c *Call) SetCallee(sb *Subroutine) {
-	c.Callee = sb
 }
 
 // Sequence Հրամանների հաջորդականություն
@@ -208,12 +198,12 @@ func (s *Sequence) AddItem(e Node) {
 // Subroutine Ենթածրագիր
 type Subroutine struct {
 	Name       string
-	Parameters []Node
+	Parameters []string
 	Body       Node
 }
 
 // NewSubroutine Նոր ենթածրագրի օբյեկտ
-func NewSubroutine(nm string, pars []Node, dy Node) *Subroutine {
+func NewSubroutine(nm string, pars []string, dy Node) *Subroutine {
 	return &Subroutine{Name: nm, Parameters: pars, Body: dy}
 }
 

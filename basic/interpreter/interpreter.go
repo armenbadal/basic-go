@@ -5,6 +5,9 @@ import (
 	"fmt"
 )
 
+// Կատարվող ծրագրի ցուցիչը
+var program *ast.Program
+
 //
 func evaluateBoolean(b *ast.Boolean, env *environment) *value {
 	return &value{kind: vBoolean, boolean: b.Value}
@@ -97,8 +100,33 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 
 //
 func evaluateApply(a *ast.Apply, env *environment) *value {
-	// TODO: if
-	return nil
+	avals := make([]*value, len(a.Arguments))
+	for i, arg := range a.Arguments {
+		avals[i] = evaluate(arg, env)
+	}
+
+	if bf, exists := builtins[a.Callee]; exists {
+		return bf(avals...)
+	}
+
+	if uf, exists := program.Members[a.Callee]; exists {
+		uds := uf.(*ast.Subroutine)
+		if len(avals) != len(uds.Parameters) {
+			panic("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
+		}
+
+		env.openScope()
+		env.set(a.Callee, &value{kind: vUndefined})
+		for i, p := range uds.Parameters {
+			env.set(p, avals[i])
+		}
+		execute(uds.Body, env)
+		result := env.get(a.Callee)
+		env.closeScope()
+		return result
+	}
+
+	panic("անծանոթ ենթածրագրի կիրառություն")
 }
 
 //
@@ -151,14 +179,14 @@ func executeInput(i *ast.Input, env *environment) {
 //
 func executePrint(p *ast.Print, env *environment) {
 	e := evaluate(p.Value, env)
-	fmt.Print(e.toString())
+	fmt.Println(e.toString())
 }
 
 //
 func executeIf(i *ast.If, env *environment) {
 	c := evaluate(i.Condition, env)
-	if c.kind != vBoolean {
-		panic("Execution error") // TODO review
+	if !c.isBoolean() {
+		panic("տիպի սխալ") // TODO review
 	}
 
 	if c.boolean {
@@ -172,7 +200,7 @@ func executeIf(i *ast.If, env *environment) {
 func executeWhile(w *ast.While, env *environment) {
 	for {
 		c := evaluate(w.Condition, env)
-		if c.kind != vBoolean {
+		if !c.isBoolean() {
 			panic("execution error") // TODO review
 		}
 
@@ -190,10 +218,17 @@ func executeFor(f *ast.For, env *environment) {
 
 //
 func executeCall(c *ast.Call, env *environment) {
+	ap := ast.Apply{Callee: c.Callee, Arguments: c.Arguments}
+	_ = evaluateApply(&ap, env)
 }
 
 //
 func executeSequence(s *ast.Sequence, env *environment) {
+	env.openScope()
+	for _, st := range s.Items {
+		execute(st, env)
+	}
+	env.closeScope()
 }
 
 //
@@ -222,7 +257,11 @@ func execute(n ast.Node, env *environment) {
 
 // Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func Execute(p *ast.Program) {
-	// գտնել Main-ը
-	// ստեղծել Call օբյեկտ ...
-	// ... կատարել այն
+	program = p
+
+	cmain := ast.Apply{Callee: "Main", Arguments: make([]ast.Node, 0)}
+	env := &environment{}
+	env.openScope()
+	_ = evaluate(&cmain, env)
+	env.closeScope()
 }

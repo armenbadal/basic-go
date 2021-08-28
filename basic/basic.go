@@ -1,6 +1,7 @@
 package main
 
 import (
+	"basic/interpreter"
 	"basic/parser"
 	"fmt"
 )
@@ -8,9 +9,10 @@ import (
 func main() {
 	fmt.Println("Բալ ալգորիթմական լեզվի իրականացումը Go լեզվով։")
 
-	pars, err := parser.NewParser("../examples/ex01.bas")
+	pars, err := parser.NewParser("../examples/ex00.bas")
 	if nil == err {
 		tree := pars.Parse()
-		println(tree)
+		//println(fmt.Sprint(tree))
+		interpreter.Execute(tree)
 	}
 }
