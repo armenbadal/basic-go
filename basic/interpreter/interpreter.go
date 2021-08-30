@@ -91,6 +91,11 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 		}
 		// TODO check range
 		result = rl.array[int(rr.number)]
+	case "=", "<>", ">", ">=", "<", "<=":
+		if rl.kind != rr.kind {
+			panic("type error")
+		}
+		// TODO
 	default:
 		panic("Unknown binary operation")
 	}
@@ -161,7 +166,7 @@ func executeDim(d *ast.Dim, env *environment) {
 	if !sz.isNumber() {
 		panic("Type error")
 	}
-	arr := &value{kind: vArray, array: make([]*value, int(sz.number), int(sz.number))}
+	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
 	env.set(d.Name, arr)
 }
 
@@ -259,7 +264,8 @@ func execute(n ast.Node, env *environment) {
 func Execute(p *ast.Program) {
 	program = p
 
-	cmain := ast.Apply{Callee: "Main", Arguments: make([]ast.Node, 0)}
+	cmain := ast.Apply{Callee: "Main",
+		Arguments: make([]ast.Node, 0)}
 	env := &environment{}
 	env.openScope()
 	_ = evaluate(&cmain, env)

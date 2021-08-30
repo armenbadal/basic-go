@@ -49,8 +49,7 @@ func (p *Parser) Parse() *ast.Program {
 	defer func() {
 		if err := recover(); err != nil {
 			// TODO: print error message
-			println("Parse Error")
-			println(err)
+			fmt.Printf("Parse Error: %s\n", err)
 		}
 	}()
 
@@ -182,11 +181,18 @@ func (p *Parser) parseDim() ast.Node {
 //
 func (p *Parser) parseLet() ast.Node {
 	p.match(xLet)
-	vn := p.lookahead.value
+	var pl ast.Node = ast.NewVariable(p.lookahead.value)
 	p.match(xIdent)
+	for p.has(xLeftBr) {
+		p.match(xLeftBr)
+		e := p.parseExpression()
+		p.match(xRightBr)
+		pl = ast.NewBinary("[]", pl, e)
+	}
+
 	p.match(xEq)
 	e0 := p.parseExpression()
-	return ast.NewLet(vn, e0)
+	return ast.NewLet(pl, e0)
 }
 
 // Ներմուծման հրամանի վերլուծությունը.
