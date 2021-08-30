@@ -38,7 +38,7 @@ func NewParser(filename string) (*Parser, error) {
 	pars.scer.read()
 	pars.lookahead = pars.scer.next()
 
-	pars.program = ast.NewProgram()
+	pars.program = &ast.Program{Members: make(map[string]ast.Node)}
 
 	return pars, nil
 }
@@ -70,7 +70,7 @@ func (p *Parser) parseProgram() {
 
 	for p.has(xSubroutine) {
 		p0 := p.parseSubroutine()
-		p.program.AddMember(p0)
+		p.program.Members[p0.Name] = p0
 		p.parseNewLines()
 	}
 }
@@ -112,17 +112,14 @@ func (p *Parser) parseSubroutine() *ast.Subroutine {
 		p.match(xRightPar)
 	}
 
-	// նոր ենթածրագրի օբյեկտ
-	sub := ast.NewSubroutine(name, pars, nil)
-
 	// մարմնի վերլուծություն
 	body := p.parseSequence()
-	sub.SetBody(body)
 
 	p.match(xEnd)
 	p.match(xSubroutine)
 
-	return sub
+	// նոր ենթածրագրի օբյեկտ
+	return &ast.Subroutine{Name: name, Parameters: pars, Body: body}
 }
 
 // Վերլուծել հրամանների հաջորդականություն
@@ -131,7 +128,7 @@ func (p *Parser) parseSubroutine() *ast.Subroutine {
 //
 func (p *Parser) parseSequence() ast.Node {
 	p.parseNewLines()
-	res := ast.NewSequence()
+	seq := &ast.Sequence{Items: make([]ast.Node, 0)}
 loop:
 	for {
 		var stat ast.Node
@@ -156,9 +153,9 @@ loop:
 			break loop
 		}
 		p.parseNewLines()
-		res.AddItem(stat)
+		seq.Items = append(seq.Items, stat)
 	}
-	return res
+	return seq
 }
 
 // Վերլուծել զանգվածի սահմանման հրամանը
@@ -172,7 +169,7 @@ func (p *Parser) parseDim() ast.Node {
 	p.match(xLeftBr)
 	sz := p.parseExpression()
 	p.match(xRightBr)
-	return ast.NewDim(nm, sz)
+	return &ast.Dim{Name: nm, Size: sz}
 }
 
 // Վերլուծել վերագրման հրամանը
@@ -181,18 +178,18 @@ func (p *Parser) parseDim() ast.Node {
 //
 func (p *Parser) parseLet() ast.Node {
 	p.match(xLet)
-	var pl ast.Node = ast.NewVariable(p.lookahead.value)
+	var pl ast.Node = &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
 	for p.has(xLeftBr) {
 		p.match(xLeftBr)
 		e := p.parseExpression()
 		p.match(xRightBr)
-		pl = ast.NewBinary("[]", pl, e)
+		pl = &ast.Binary{Operation: "[]", Left: pl, Right: e}
 	}
 
 	p.match(xEq)
 	e0 := p.parseExpression()
-	return ast.NewLet(pl, e0)
+	return &ast.Let{Place: pl, Value: e0}
 }
 
 // Ներմուծման հրամանի վերլուծությունը.
@@ -201,9 +198,9 @@ func (p *Parser) parseLet() ast.Node {
 //
 func (p *Parser) parseInput() ast.Node {
 	p.match(xInput)
-	nam := p.lookahead.value
+	name := p.lookahead.value
 	p.match(xIdent)
-	return ast.NewInput(nam)
+	return &ast.Input{Place: name}
 }
 
 // Արտածման հրամանի վերլուծությունը.
@@ -213,7 +210,7 @@ func (p *Parser) parseInput() ast.Node {
 func (p *Parser) parsePrint() ast.Node {
 	p.match(xPrint)
 	e0 := p.parseExpression()
-	return ast.NewPrint(e0)
+	return &ast.Print{Value: e0}
 }
 
 // Ճյուղավորման հրամանի վերլուծությունը.
@@ -228,21 +225,21 @@ func (p *Parser) parseIf() ast.Node {
 	c0 := p.parseExpression()
 	p.match(xThen)
 	s0 := p.parseSequence()
-	res := ast.NewIf(c0, s0)
+	res := &ast.If{Condition: c0, Decision: s0}
 	ipe := res
 	for p.has(xElseIf) {
 		p.match(xElseIf)
 		c1 := p.parseExpression()
 		p.match(xThen)
 		s1 := p.parseSequence()
-		alt := ast.NewIf(c1, s1)
-		ipe.SetElse(alt)
+		alt := &ast.If{Condition: c1, Decision: s1}
+		ipe.Alternative = alt
 		ipe = alt
 	}
 	if p.has(xElse) {
 		p.match(xElse)
 		s2 := p.parseSequence()
-		ipe.SetElse(s2)
+		ipe.Alternative = s2
 	}
 	p.match(xEnd)
 	p.match(xIf)
@@ -259,7 +256,7 @@ func (p *Parser) parseWhile() ast.Node {
 	b0 := p.parseSequence()
 	p.match(xEnd)
 	p.match(xWhile)
-	return ast.NewWhile(c0, b0)
+	return &ast.While{Condition: c0, Body: b0}
 }
 
 // Պարամետրով ցիկլի վերլուծությունը
@@ -293,11 +290,16 @@ func (p *Parser) parseFor() ast.Node {
 			num = -num
 		}
 	}
-	s0 := ast.NewNumber(num)
+	s0 := &ast.Number{Value: num}
 	dy := p.parseSequence()
 	p.match(xEnd)
 	p.match(xFor)
-	return ast.NewFor(param, b0, e0, s0, dy)
+	return &ast.For{
+		Parameter: param,
+		Begin:     b0,
+		End:       e0,
+		Step:      s0,
+		Body:      dy}
 }
 
 // Ենթածրագրի կանչի վերլուծությունը
@@ -319,7 +321,7 @@ func (p *Parser) parseCall() ast.Node {
 		}
 	}
 
-	return ast.NewCall(name, args)
+	return &ast.Call{Callee: name, Arguments: args}
 }
 
 // Արտահայտություն
@@ -331,7 +333,7 @@ func (p *Parser) parseExpression() ast.Node {
 	for p.has(xOr) {
 		p.match(xOr)
 		e0 := p.parseConjunction()
-		res = ast.NewBinary("OR", res, e0)
+		res = &ast.Binary{Operation: "OR", Left: res, Right: e0}
 	}
 	return res
 }
@@ -345,7 +347,7 @@ func (p *Parser) parseConjunction() ast.Node {
 	for p.has(xAnd) {
 		p.match(xAnd)
 		e0 := p.parseEquality()
-		res = ast.NewBinary("AND", res, e0)
+		res = &ast.Binary{Operation: "AND", Left: res, Right: e0}
 	}
 	return res
 }
@@ -367,7 +369,7 @@ func (p *Parser) parseEquality() ast.Node {
 			p.match(xNe)
 		}
 		e0 := p.parseComparison()
-		res = ast.NewBinary(opc, res, e0)
+		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
 	return res
 }
@@ -395,7 +397,7 @@ func (p *Parser) parseComparison() ast.Node {
 			p.match(xLe)
 		}
 		e0 := p.parseAddition()
-		res = ast.NewBinary(opc, res, e0)
+		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
 	return res
 }
@@ -420,7 +422,7 @@ func (p *Parser) parseAddition() ast.Node {
 			p.match(xAmp)
 		}
 		e0 := p.parseMultiplication()
-		res = ast.NewBinary(opc, res, e0)
+		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
 	return res
 }
@@ -445,7 +447,7 @@ func (p *Parser) parseMultiplication() ast.Node {
 			p.match(xMod)
 		}
 		e0 := p.parsePower()
-		res = ast.NewBinary(opc, res, e0)
+		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
 	return res
 }
@@ -459,7 +461,7 @@ func (p *Parser) parsePower() ast.Node {
 	if p.has(xPow) {
 		p.match(xPow)
 		e0 := p.parsePower()
-		res = ast.NewBinary("^", res, e0)
+		res = &ast.Binary{Operation: "^", Left: res, Right: e0}
 	}
 	return res
 }
@@ -474,7 +476,7 @@ func (p *Parser) parseIndex() ast.Node {
 		p.match(xLeftBr)
 		e0 := p.parseExpression()
 		p.match(xRightBr)
-		res = ast.NewBinary("[]", res, e0)
+		res = &ast.Binary{Operation: "[]", Left: res, Right: e0}
 	}
 	return res
 }
@@ -518,7 +520,7 @@ func (p *Parser) parseFactor() ast.Node {
 func (p *Parser) parseTrueOrFalse() ast.Node {
 	lex := strings.ToUpper(p.lookahead.value)
 	p.match(p.lookahead.token)
-	return ast.NewBoolean(lex == "TRUE")
+	return &ast.Boolean{Value: lex == "TRUE"}
 }
 
 // թվային լիտերալ
@@ -526,14 +528,14 @@ func (p *Parser) parseNumber() ast.Node {
 	lex := p.lookahead.value
 	p.match(xNumber)
 	val, _ := strconv.ParseFloat(lex, 64)
-	return ast.NewNumber(val)
+	return &ast.Number{Value: val}
 }
 
 // տեքստային լիտերալ
 func (p *Parser) parseText() ast.Node {
 	val := p.lookahead.value
 	p.match(xText)
-	return ast.NewText(val)
+	return &ast.Text{Value: val}
 }
 
 // զանգվածի լիտերալ
@@ -548,7 +550,7 @@ func (p *Parser) parseArray() ast.Node {
 		elems = append(elems, e)
 	}
 	p.match(xRightBr)
-	return ast.NewArray(elems)
+	return &ast.Array{Elements: elems}
 }
 
 // իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
@@ -569,10 +571,10 @@ func (p *Parser) parseIdentOrApply() ast.Node {
 			}
 		}
 		p.match(xRightPar)
-		return ast.NewApply(name, args)
+		return &ast.Apply{Callee: name, Arguments: args}
 	}
 
-	return ast.NewVariable(name)
+	return &ast.Variable{Name: name}
 }
 
 // ունար գործողություն
@@ -587,7 +589,7 @@ func (p *Parser) parseUnary() ast.Node {
 		p.match(xNot)
 	}
 	res := p.parseFactor()
-	res = ast.NewUnary(opc, res)
+	res = &ast.Unary{Operation: opc, Right: res}
 	return res
 }
 

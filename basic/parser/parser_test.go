@@ -13,7 +13,7 @@ func TestOne(t *testing.T) {
 		t.Error("failed to parse the file")
 	}
 
-	if tree.Members != nil && len(tree.Members) != 2 {
+	if tree.Members != nil && len(tree.Members) != 1 {
 		t.Error("failed to parse file")
 	}
 }
