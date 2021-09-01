@@ -42,73 +42,73 @@ type Binary struct {
 
 // Apply Ֆունկցիայի կիրառում
 type Apply struct {
-	Callee    string
-	Arguments []Node
+	Callee    string // ենթածրագրի անունը
+	Arguments []Node // արգումենտները
 }
 
 // Dim զանգվածի սահմանում
 type Dim struct {
-	Name string
-	Size Node
+	Name string // զանգվածի անունը
+	Size Node   // զանգվածի չափը
 }
 
 // Let Վերագրում
 type Let struct {
-	Place Node
-	Value Node
+	Place Node // վերագրման տեղը
+	Value Node // վերագրվող արժեքը
 }
 
 // Input Ներմուծում
 type Input struct {
-	Place Node
+	Place Node // ներմուծված արժեքը պահելու տեղը
 }
 
 // Print Արտածում
 type Print struct {
-	Value Node
+	Value Node // արտածվելիք արժեք
 }
 
 // If Ճյուղավորում
 type If struct {
-	Condition   Node
-	Decision    Node
-	Alternative Node
+	Condition   Node // պայման
+	Decision    Node // դրական ընտրություն
+	Alternative Node // բացասական ընտրություն
 }
 
 // While Նախապայմանով ցիկլ
 type While struct {
-	Condition Node
-	Body      Node
+	Condition Node // կատարման պայման
+	Body      Node // մարմին
 }
 
 // For Հաշվիչով ցիկլ
 type For struct {
-	Parameter Node
-	Begin     Node
-	End       Node
-	Step      Node
-	Body      Node
+	Parameter Node // ցիկլի հաշվիչը
+	Begin     Node // հաշվիչի սկզբնական արժեք
+	End       Node // հաշվիջի վերջնական արժեք
+	Step      Node // հաշվիչի քայլը
+	Body      Node // ցիկլի մարմինը
 }
 
 // Call Ենթածրագիր կանչ
 type Call struct {
-	Callee    string
-	Arguments []Node
+	Callee    string // ենթածրագրի անուն
+	Arguments []Node // կանչի արգումենտներ
 }
 
 // Sequence Հրամանների հաջորդականություն
 type Sequence struct {
-	Items []Node
+	Items []Node // հրամաններ
 }
 
 // Subroutine Ենթածրագիր
 type Subroutine struct {
-	Name       string
-	Parameters []string
-	Body       Node
+	Name       string   // ենթածրագրի անուն
+	Parameters []string // պարամետրերի ցուցակ
+	Body       Node     // մարմին
 }
 
 // Program Ծրագիր
 type Program struct {
-	Members map[string]Node
+	Members map[string]Node // ենթածրագրերի ցուցակ
 }

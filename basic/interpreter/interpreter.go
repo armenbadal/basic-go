@@ -197,7 +197,9 @@ func executeIf(i *ast.If, env *environment) {
 	if c.boolean {
 		execute(i.Decision, env)
 	} else {
-		execute(i.Alternative, env)
+		if i.Alternative != 0 {
+			execute(i.Alternative, env)
+		}
 	}
 }
 

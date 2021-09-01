@@ -2,22 +2,21 @@ package interpreter
 
 import "fmt"
 
-// Պարզ տիպեր
 const (
-	vUndefined = '?'
-	vBoolean   = 'B'
-	vNumber    = 'N'
-	vText      = 'T'
-	vArray     = 'A'
+	vUndefined = '?' // անորոշ
+	vBoolean   = 'B' // տեամաբանական
+	vNumber    = 'N' // թվային
+	vText      = 'T' // տեքստային
+	vArray     = 'A' // զանգված
 )
 
 // Value Ունիվերսալ արժեք
 type value struct {
-	kind    rune
-	boolean bool
-	number  float64
-	text    string
-	array   []*value
+	kind    rune     // տեսակը
+	boolean bool     // տրամաբանական արժեք
+	number  float64  // թվային արժեք
+	text    string   // տեքստային արժեք
+	array   []*value // արժեքների զանգված
 }
 
 func (v *value) isBoolean() bool { return v.kind == vBoolean }

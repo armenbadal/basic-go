@@ -12,7 +12,10 @@ type environment struct {
 
 // OpenScope ...
 func (e *environment) openScope() {
-	e.current = &scope{items: make(map[string]*value), up: e.current}
+	e.current = &scope{
+		items: make(map[string]*value),
+		up:    e.current,
+	}
 }
 
 // CloseScope ...
@@ -32,10 +35,8 @@ func (e *environment) set(name string, value *value) {
 func (e *environment) get(name string) *value {
 	p := e.current
 	for p != nil {
-		for k, v := range p.items {
-			if k == name {
-				return v
-			}
+		if v, exists := p.items[name]; exists {
+			return v
 		}
 		p = p.up
 	}
