@@ -1,6 +1,9 @@
 package interpreter
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	vUndefined = '?' // անորոշ
@@ -28,14 +31,20 @@ func (v *value) String() string {
 	res := "<undefined>"
 	switch v.kind {
 	case vBoolean:
-		res = fmt.Sprint(v.boolean)
+		res = strings.ToUpper(fmt.Sprint(v.boolean))
 	case vNumber:
 		res = fmt.Sprint(v.number)
 	case vText:
 		res = v.text
 	case vArray:
-		// TODO create string view of array
-		res = "[]"
+		res = ""
+		for i, e := range v.array {
+			if i != 0 {
+				res += ", "
+			}
+			res += e.String()
+		}
+		res = "[" + res + "]"
 	case vUndefined:
 	}
 	return res

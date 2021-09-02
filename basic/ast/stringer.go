@@ -65,7 +65,7 @@ func unindent() {
 }
 
 func (d *Dim) String() string {
-	return fmt.Sprintf("DIM %s[%d]", d.Name, d.Size)
+	return fmt.Sprintf("%sDIM %s[%s]", spaces, d.Name, fmt.Sprint(d.Size))
 }
 
 func (l *Let) String() string {

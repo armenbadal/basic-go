@@ -35,6 +35,11 @@ func evaluateArray(a *ast.Array, env *environment) *value {
 
 //
 func evaluateVariable(v *ast.Variable, env *environment) *value {
+	if vp := env.get(v.Name); vp != nil {
+		return vp
+	}
+
+	env.set(v.Name, &value{})
 	return env.get(v.Name)
 }
 
@@ -46,17 +51,15 @@ func evaluateUnary(u *ast.Unary, env *environment) *value {
 	case "-":
 		rv := evaluate(u.Right, env)
 		if !rv.isNumber() {
-			panic("Type error")
+			panic("- գործողության արգումենտը պետք է թիվ լինի")
 		}
 		result = &value{kind: vNumber, number: -rv.number}
 	case "NOT":
 		rv := evaluate(u.Right, env)
 		if !rv.isBoolean() {
-			panic("Type error")
+			panic("NOT գործողության արգումենտը պետք է տրամաբանական արժեք լինի")
 		}
 		result = &value{kind: vBoolean, boolean: !rv.boolean}
-	default:
-		panic("Unknown unarty operation")
 	}
 
 	return result
@@ -99,21 +102,28 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 		// TODO
 	case "[]":
 		rl := evaluate(b.Left, env)
-		rr := evaluate(b.Right, env)
-		if !rl.isArray() || !rr.isNumber() {
-			panic("Type error")
+		if !rl.isArray() {
+			panic("[]-ի ձախ կողմում պետք է զանգված լինի")
 		}
-		// TODO check range
-		result = rl.array[int(rr.number)]
+
+		rr := evaluate(b.Right, env)
+		if !rr.isNumber() {
+			panic("[]-ի ինդեքսը պետք է թիվ լինի")
+		}
+
+		ix := int(rr.number)
+		if ix < 0 || ix >= len(rl.array) {
+			panic("ինդեքսը զանգվածի սահմաններից դուրս է")
+		}
+
+		result = rl.array[ix]
 	case "=", "<>", ">", ">=", "<", "<=":
 		rl := evaluate(b.Left, env)
 		rr := evaluate(b.Right, env)
 		if rl.kind != rr.kind {
-			panic("type error")
+			panic("կարող են համեմատվել միայն նույն տիպի արժեքները")
 		}
 		// TODO
-	default:
-		panic("Unknown binary operation")
 	}
 
 	return result
@@ -188,7 +198,11 @@ func executeDim(d *ast.Dim, env *environment) {
 	if !sz.isNumber() {
 		panic("Type error")
 	}
+
 	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
+	for i := 0; i < len(arr.array); i++ {
+		arr.array[i] = &value{}
+	}
 	env.set(d.Name, arr)
 }
 
@@ -201,6 +215,7 @@ func executeLet(l *ast.Let, env *environment) {
 
 //
 func executeInput(i *ast.Input, env *environment) {
+	// TODO
 }
 
 //
@@ -243,6 +258,7 @@ func executeWhile(w *ast.While, env *environment) {
 
 //
 func executeFor(f *ast.For, env *environment) {
+	// TODO
 }
 
 //
