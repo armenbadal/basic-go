@@ -90,11 +90,8 @@ type For struct {
 	Body      Node // ցիկլի մարմինը
 }
 
-// Call Ենթածրագիր կանչ
-type Call struct {
-	Callee    string // ենթածրագրի անուն
-	Arguments []Node // կանչի արգումենտներ
-}
+// Call Ենթածրագիր կանչ, նույնն է թե Apply
+type Call = Apply
 
 // Sequence Հրամանների հաջորդականություն
 type Sequence struct {

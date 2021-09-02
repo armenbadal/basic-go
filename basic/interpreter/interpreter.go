@@ -66,32 +66,48 @@ func evaluateUnary(u *ast.Unary, env *environment) *value {
 func evaluateBinary(b *ast.Binary, env *environment) *value {
 	var result *value
 
-	rl := evaluate(b.Left, env)
-	rr := evaluate(b.Right, env)
-
 	switch b.Operation {
 	case "+", "-", "*", "/", "\\", "^":
-		if !rl.isNumber() || !rr.isNumber() {
+		rl := evaluate(b.Left, env)
+		if !rl.isNumber() {
+			panic("Type error")
+		}
+
+		rr := evaluate(b.Right, env)
+		if !rr.isNumber() {
 			panic("Type error")
 		}
 		// TODO
 	case "&":
-		if !rl.isText() || !rr.isText() {
+		rl := evaluate(b.Left, env)
+		if !rl.isText() {
 			panic("Type error")
 		}
+
+		rr := evaluate(b.Right, env)
+		if !rr.isText() {
+			panic("Type error")
+		}
+
 		result = &value{kind: vText, text: rl.text + rr.text}
 	case "AND", "OR":
+		rl := evaluate(b.Left, env)
+		rr := evaluate(b.Right, env)
 		if !rl.isBoolean() || !rr.isBoolean() {
 			panic("Type error")
 		}
 		// TODO
 	case "[]":
+		rl := evaluate(b.Left, env)
+		rr := evaluate(b.Right, env)
 		if !rl.isArray() || !rr.isNumber() {
 			panic("Type error")
 		}
 		// TODO check range
 		result = rl.array[int(rr.number)]
 	case "=", "<>", ">", ">=", "<", "<=":
+		rl := evaluate(b.Left, env)
+		rr := evaluate(b.Right, env)
 		if rl.kind != rr.kind {
 			panic("type error")
 		}
@@ -105,33 +121,39 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 
 //
 func evaluateApply(a *ast.Apply, env *environment) *value {
+	// կանչի արգումենտների հաշվարկը
 	avals := make([]*value, len(a.Arguments))
 	for i, arg := range a.Arguments {
 		avals[i] = evaluate(arg, env)
 	}
 
+	// նախապատվությունը տալիս ենք ներդրված ենթածրագրերին (?)
 	if bf, exists := builtins[a.Callee]; exists {
 		return bf(avals...)
 	}
 
+	// ծրագրավորողի սահմանած ենթածրագրի կանչ
 	if uf, exists := program.Members[a.Callee]; exists {
 		uds := uf.(*ast.Subroutine)
 		if len(avals) != len(uds.Parameters) {
 			panic("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
 		}
 
-		env.openScope()
+		env.openScope() // նոր տիրույթ
 		env.set(a.Callee, &value{kind: vUndefined})
+		// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
 		for i, p := range uds.Parameters {
 			env.set(p, avals[i])
 		}
+		// ենթածրագրի մարմնի կատարում
 		execute(uds.Body, env)
 		result := env.get(a.Callee)
-		env.closeScope()
+		env.closeScope() // տիրույթի փակում
+
 		return result
 	}
 
-	panic("անծանոթ ենթածրագրի կիրառություն")
+	panic(a.Callee + ". անծանոթ ենթածրագրի կիրառություն")
 }
 
 //
@@ -184,7 +206,7 @@ func executeInput(i *ast.Input, env *environment) {
 //
 func executePrint(p *ast.Print, env *environment) {
 	e := evaluate(p.Value, env)
-	fmt.Println(e.toString())
+	fmt.Println(e)
 }
 
 //
@@ -197,7 +219,7 @@ func executeIf(i *ast.If, env *environment) {
 	if c.boolean {
 		execute(i.Decision, env)
 	} else {
-		if i.Alternative != 0 {
+		if i.Alternative != nil {
 			execute(i.Alternative, env)
 		}
 	}
@@ -225,8 +247,7 @@ func executeFor(f *ast.For, env *environment) {
 
 //
 func executeCall(c *ast.Call, env *environment) {
-	ap := ast.Apply{Callee: c.Callee, Arguments: c.Arguments}
-	_ = evaluateApply(&ap, env)
+	_ = evaluateApply(c, env)
 }
 
 //
@@ -264,12 +285,23 @@ func execute(n ast.Node, env *environment) {
 
 // Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func Execute(p *ast.Program) {
+	// որսալ սխալն ու արտածել հաղորդագրությունը
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("Կատարման սխալ: %s։\n", err)
+		}
+	}()
+
+	// ծրագրի ցուցիչը պահել ենթածրագրերին հղվելու համար
 	program = p
 
-	cmain := ast.Apply{Callee: "Main",
-		Arguments: make([]ast.Node, 0)}
+	// կատարման միջավայրը
 	env := &environment{}
 	env.openScope()
-	_ = evaluate(&cmain, env)
+
+	// Main ֆունկցաիյի մարմնի կատարում
+	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
+	execute(&cmain, env)
+
 	env.closeScope()
 }

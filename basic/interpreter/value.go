@@ -24,7 +24,7 @@ func (v *value) isNumber() bool  { return v.kind == vNumber }
 func (v *value) isText() bool    { return v.kind == vText }
 func (v *value) isArray() bool   { return v.kind == vArray }
 
-func (v *value) toString() string {
+func (v *value) String() string {
 	res := "<undefined>"
 	switch v.kind {
 	case vBoolean:
