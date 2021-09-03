@@ -51,5 +51,28 @@ func (v *value) String() string {
 }
 
 func (v *value) clone() *value {
-	return nil
+	cloned := &value{}
+	*cloned = *v
+
+	if cloned.kind == vArray {
+		cloned.array = make([]*value, len(v.array))
+		for i, e := range v.array {
+			cloned.array[i] = e.clone()
+		}
+	}
+
+	return cloned
 }
+
+// func eq(x, y *value) bool {
+// 	switch x.kind {
+// 	case vBoolean:
+// 		return x.boolean == y.boolean
+// 	case vNumber:
+// 		return x.number == y.number
+// 	case vText:
+// 		return x.text == y.text
+// 	case vArray:
+// 		res =
+// 	}
+// }

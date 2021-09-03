@@ -3,7 +3,7 @@ package parser
 import "testing"
 
 func TestOne(t *testing.T) {
-	pars, err := NewParser("../../examples/ex00.bas")
+	pars, err := New("../../examples/ex00.bas")
 	if nil != err {
 		t.Error("Failed to create parser")
 	}

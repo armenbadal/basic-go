@@ -5,57 +5,87 @@ import (
 	"fmt"
 )
 
-// Կատարվող ծրագրի ցուցիչը
-var program *ast.Program
+// Interpreter Ինտերպրետատորի ստրուկտուրան
+type Interpreter struct {
+	// Կատարվող ծրագրի ցուցիչը
+	program *ast.Program
+	// կատարման միջավայրը
+	env *environment
+}
+
+// NewInterpreter Նոր ինտերպրետատոր օբյեկտ
+func New() *Interpreter {
+	return &Interpreter{program: nil, env: &environment{}}
+}
+
+// Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
+func (i *Interpreter) Execute(p *ast.Program) {
+	// որսալ սխալն ու արտածել հաղորդագրությունը
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("Կատարման սխալ: %s։\n", err)
+		}
+	}()
+
+	// ծրագրի ցուցիչը պահել ենթածրագրերին հղվելու համար
+	i.program = p
+
+	i.env.openScope()
+	defer i.env.closeScope()
+
+	// Main ֆունկցաիյի մարմնի կատարում
+	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
+	i.execute(&cmain)
+}
 
 //
-func evaluateBoolean(b *ast.Boolean, env *environment) *value {
+func (i *Interpreter) evaluateBoolean(b *ast.Boolean) *value {
 	return &value{kind: vBoolean, boolean: b.Value}
 }
 
 //
-func evaluateNumber(n *ast.Number, env *environment) *value {
+func (i *Interpreter) evaluateNumber(n *ast.Number) *value {
 	return &value{kind: vNumber, number: n.Value}
 }
 
 //
-func evaluateText(t *ast.Text, env *environment) *value {
+func (i *Interpreter) evaluateText(t *ast.Text) *value {
 	return &value{kind: vText, text: t.Value}
 }
 
 //
-func evaluateArray(a *ast.Array, env *environment) *value {
+func (i *Interpreter) evaluateArray(a *ast.Array) *value {
 	els := len(a.Elements)
 	res := &value{kind: vArray, array: make([]*value, els)}
-	for i, e := range a.Elements {
-		res.array[i] = evaluate(e, env)
+	for j, e := range a.Elements {
+		res.array[j] = i.evaluate(e)
 	}
 	return res
 }
 
 //
-func evaluateVariable(v *ast.Variable, env *environment) *value {
-	if vp := env.get(v.Name); vp != nil {
+func (i *Interpreter) evaluateVariable(v *ast.Variable) *value {
+	if vp := i.env.get(v.Name); vp != nil {
 		return vp
 	}
 
-	env.set(v.Name, &value{})
-	return env.get(v.Name)
+	i.env.set(v.Name, &value{})
+	return i.env.get(v.Name)
 }
 
 //
-func evaluateUnary(u *ast.Unary, env *environment) *value {
+func (i *Interpreter) evaluateUnary(u *ast.Unary) *value {
 	var result *value
 
 	switch u.Operation {
 	case "-":
-		rv := evaluate(u.Right, env)
+		rv := i.evaluate(u.Right)
 		if !rv.isNumber() {
 			panic("- գործողության արգումենտը պետք է թիվ լինի")
 		}
 		result = &value{kind: vNumber, number: -rv.number}
 	case "NOT":
-		rv := evaluate(u.Right, env)
+		rv := i.evaluate(u.Right)
 		if !rv.isBoolean() {
 			panic("NOT գործողության արգումենտը պետք է տրամաբանական արժեք լինի")
 		}
@@ -66,47 +96,53 @@ func evaluateUnary(u *ast.Unary, env *environment) *value {
 }
 
 //
-func evaluateBinary(b *ast.Binary, env *environment) *value {
+func (i *Interpreter) evaluateBinary(b *ast.Binary) *value {
 	var result *value
 
 	switch b.Operation {
 	case "+", "-", "*", "/", "\\", "^":
-		rl := evaluate(b.Left, env)
+		rl := i.evaluate(b.Left)
 		if !rl.isNumber() {
 			panic("Type error")
 		}
 
-		rr := evaluate(b.Right, env)
+		rr := i.evaluate(b.Right)
 		if !rr.isNumber() {
 			panic("Type error")
 		}
-		// TODO
+
+		return operations[b.Operation](rl, rr)
 	case "&":
-		rl := evaluate(b.Left, env)
+		rl := i.evaluate(b.Left)
 		if !rl.isText() {
 			panic("Type error")
 		}
 
-		rr := evaluate(b.Right, env)
+		rr := i.evaluate(b.Right)
 		if !rr.isText() {
 			panic("Type error")
 		}
 
 		result = &value{kind: vText, text: rl.text + rr.text}
 	case "AND", "OR":
-		rl := evaluate(b.Left, env)
-		rr := evaluate(b.Right, env)
-		if !rl.isBoolean() || !rr.isBoolean() {
-			panic("Type error")
+		rl := i.evaluate(b.Left)
+		if !rl.isBoolean() {
+			panic("AND գործողության ձախ կողմում սպասվում է տրամաբանական արժեք")
 		}
+
+		rr := i.evaluate(b.Right)
+		if !rr.isBoolean() {
+			panic("AND գործողության աջ կողմում սպասվում է տրամաբանական արժեք")
+		}
+
 		// TODO
 	case "[]":
-		rl := evaluate(b.Left, env)
+		rl := i.evaluate(b.Left)
 		if !rl.isArray() {
 			panic("[]-ի ձախ կողմում պետք է զանգված լինի")
 		}
 
-		rr := evaluate(b.Right, env)
+		rr := i.evaluate(b.Right)
 		if !rr.isNumber() {
 			panic("[]-ի ինդեքսը պետք է թիվ լինի")
 		}
@@ -118,8 +154,8 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 
 		result = rl.array[ix]
 	case "=", "<>", ">", ">=", "<", "<=":
-		rl := evaluate(b.Left, env)
-		rr := evaluate(b.Right, env)
+		rl := i.evaluate(b.Left)
+		rr := i.evaluate(b.Right)
 		if rl.kind != rr.kind {
 			panic("կարող են համեմատվել միայն նույն տիպի արժեքները")
 		}
@@ -130,11 +166,11 @@ func evaluateBinary(b *ast.Binary, env *environment) *value {
 }
 
 //
-func evaluateApply(a *ast.Apply, env *environment) *value {
+func (i *Interpreter) evaluateApply(a *ast.Apply) *value {
 	// կանչի արգումենտների հաշվարկը
 	avals := make([]*value, len(a.Arguments))
-	for i, arg := range a.Arguments {
-		avals[i] = evaluate(arg, env)
+	for j, arg := range a.Arguments {
+		avals[j] = i.evaluate(arg)
 	}
 
 	// նախապատվությունը տալիս ենք ներդրված ենթածրագրերին (?)
@@ -143,22 +179,22 @@ func evaluateApply(a *ast.Apply, env *environment) *value {
 	}
 
 	// ծրագրավորողի սահմանած ենթածրագրի կանչ
-	if uf, exists := program.Members[a.Callee]; exists {
+	if uf, exists := i.program.Members[a.Callee]; exists {
 		uds := uf.(*ast.Subroutine)
 		if len(avals) != len(uds.Parameters) {
 			panic("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
 		}
 
-		env.openScope() // նոր տիրույթ
-		env.set(a.Callee, &value{kind: vUndefined})
+		i.env.openScope() // նոր տիրույթ
+		defer i.env.closeScope()
+		i.env.set(a.Callee, &value{kind: vUndefined})
 		// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
-		for i, p := range uds.Parameters {
-			env.set(p, avals[i])
+		for j, p := range uds.Parameters {
+			i.env.set(p, avals[j])
 		}
 		// ենթածրագրի մարմնի կատարում
-		execute(uds.Body, env)
-		result := env.get(a.Callee)
-		env.closeScope() // տիրույթի փակում
+		i.execute(uds.Body)
+		result := i.env.get(a.Callee)
 
 		return result
 	}
@@ -167,34 +203,34 @@ func evaluateApply(a *ast.Apply, env *environment) *value {
 }
 
 //
-func evaluate(n ast.Node, env *environment) *value {
+func (i *Interpreter) evaluate(n ast.Node) *value {
 	var result *value
 
 	switch e := n.(type) {
 	case *ast.Boolean:
-		result = evaluateBoolean(e, env)
+		result = i.evaluateBoolean(e)
 	case *ast.Number:
-		result = evaluateNumber(e, env)
+		result = i.evaluateNumber(e)
 	case *ast.Text:
-		result = evaluateText(e, env)
+		result = i.evaluateText(e)
 	case *ast.Array:
-		result = evaluateArray(e, env)
+		result = i.evaluateArray(e)
 	case *ast.Variable:
-		result = evaluateVariable(e, env)
+		result = i.evaluateVariable(e)
 	case *ast.Unary:
-		result = evaluateUnary(e, env)
+		result = i.evaluateUnary(e)
 	case *ast.Binary:
-		result = evaluateBinary(e, env)
+		result = i.evaluateBinary(e)
 	case *ast.Apply:
-		result = evaluateApply(e, env)
+		result = i.evaluateApply(e)
 	}
 
 	return result
 }
 
 //
-func executeDim(d *ast.Dim, env *environment) {
-	sz := evaluate(d.Size, env)
+func (i *Interpreter) executeDim(d *ast.Dim) {
+	sz := i.evaluate(d.Size)
 	if !sz.isNumber() {
 		panic("Type error")
 	}
@@ -203,121 +239,98 @@ func executeDim(d *ast.Dim, env *environment) {
 	for i := 0; i < len(arr.array); i++ {
 		arr.array[i] = &value{}
 	}
-	env.set(d.Name, arr)
+	i.env.set(d.Name, arr)
 }
 
 //
-func executeLet(l *ast.Let, env *environment) {
-	p := evaluate(l.Place, env)
-	v := evaluate(l.Value, env)
+func (i *Interpreter) executeLet(l *ast.Let) {
+	p := i.evaluate(l.Place)
+	v := i.evaluate(l.Value)
 	*p = *v
 }
 
 //
-func executeInput(i *ast.Input, env *environment) {
+func (i *Interpreter) executeInput(s *ast.Input) {
 	// TODO
 }
 
 //
-func executePrint(p *ast.Print, env *environment) {
-	e := evaluate(p.Value, env)
+func (i *Interpreter) executePrint(p *ast.Print) {
+	e := i.evaluate(p.Value)
 	fmt.Println(e)
 }
 
 //
-func executeIf(i *ast.If, env *environment) {
-	c := evaluate(i.Condition, env)
+func (i *Interpreter) executeIf(b *ast.If) {
+	c := i.evaluate(b.Condition)
 	if !c.isBoolean() {
-		panic("տիպի սխալ") // TODO review
+		panic("IF հրամանի պայմանը պետք է լինի տրամաբանական արժեք")
 	}
 
 	if c.boolean {
-		execute(i.Decision, env)
+		i.execute(b.Decision)
 	} else {
-		if i.Alternative != nil {
-			execute(i.Alternative, env)
+		if b.Alternative != nil {
+			i.execute(b.Alternative)
 		}
 	}
 }
 
 //
-func executeWhile(w *ast.While, env *environment) {
+func (i *Interpreter) executeWhile(w *ast.While) {
 	for {
-		c := evaluate(w.Condition, env)
+		c := i.evaluate(w.Condition)
 		if !c.isBoolean() {
-			panic("execution error") // TODO review
+			panic("WHILE հրամանի պայմանը պետք է տրամաբանական արժեք լինի")
 		}
 
 		if !c.boolean {
 			break
 		}
 
-		execute(w.Body, env)
+		i.execute(w.Body)
 	}
 }
 
 //
-func executeFor(f *ast.For, env *environment) {
+func (i *Interpreter) executeFor(f *ast.For) {
 	// TODO
 }
 
 //
-func executeCall(c *ast.Call, env *environment) {
-	_ = evaluateApply(c, env)
+func (i *Interpreter) executeCall(c *ast.Call) {
+	_ = i.evaluateApply(c)
 }
 
 //
-func executeSequence(s *ast.Sequence, env *environment) {
-	env.openScope()
+func (i *Interpreter) executeSequence(s *ast.Sequence) {
+	i.env.openScope()
+	defer i.env.closeScope()
 	for _, st := range s.Items {
-		execute(st, env)
+		i.execute(st)
 	}
-	env.closeScope()
 }
 
 //
-func execute(n ast.Node, env *environment) {
+func (i *Interpreter) execute(n ast.Node) {
 	switch s := n.(type) {
 	case *ast.Dim:
-		executeDim(s, env)
+		i.executeDim(s)
 	case *ast.Let:
-		executeLet(s, env)
+		i.executeLet(s)
 	case *ast.Input:
-		executeInput(s, env)
+		i.executeInput(s)
 	case *ast.Print:
-		executePrint(s, env)
+		i.executePrint(s)
 	case *ast.If:
-		executeIf(s, env)
+		i.executeIf(s)
 	case *ast.While:
-		executeWhile(s, env)
+		i.executeWhile(s)
 	case *ast.For:
-		executeFor(s, env)
+		i.executeFor(s)
 	case *ast.Call:
-		executeCall(s, env)
+		i.executeCall(s)
 	case *ast.Sequence:
-		executeSequence(s, env)
+		i.executeSequence(s)
 	}
-}
-
-// Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
-func Execute(p *ast.Program) {
-	// որսալ սխալն ու արտածել հաղորդագրությունը
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Printf("Կատարման սխալ: %s։\n", err)
-		}
-	}()
-
-	// ծրագրի ցուցիչը պահել ենթածրագրերին հղվելու համար
-	program = p
-
-	// կատարման միջավայրը
-	env := &environment{}
-	env.openScope()
-
-	// Main ֆունկցաիյի մարմնի կատարում
-	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
-	execute(&cmain, env)
-
-	env.closeScope()
 }

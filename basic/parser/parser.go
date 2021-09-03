@@ -22,7 +22,7 @@ type Parser struct {
 }
 
 // NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
-func NewParser(filename string) (*Parser, error) {
+func New(filename string) (*Parser, error) {
 	// բացել ֆայլային հոսքը
 	rd, er := os.Open(filename)
 	if er != nil {
