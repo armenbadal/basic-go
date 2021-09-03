@@ -1,7 +1,7 @@
 
 SUB Main
     LET k = 1
-    WHILE k < 5
+    WHILE k <= 5
         PRINT k
         LET k = k + 1
     END WHILE

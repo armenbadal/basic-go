@@ -64,15 +64,26 @@ func (v *value) clone() *value {
 	return cloned
 }
 
-// func eq(x, y *value) bool {
-// 	switch x.kind {
-// 	case vBoolean:
-// 		return x.boolean == y.boolean
-// 	case vNumber:
-// 		return x.number == y.number
-// 	case vText:
-// 		return x.text == y.text
-// 	case vArray:
-// 		res =
-// 	}
-// }
+func eq(x, y *value) bool {
+	switch {
+	case x.isBoolean() && y.isBoolean():
+		return x.boolean == y.boolean
+	case x.isNumber() && y.isNumber():
+		return x.number == y.number
+	case x.isText() && y.isText():
+		return x.text == y.text
+	}
+
+	panic("անհամեմատելի արժեքներ")
+}
+
+func lt(x, y *value) bool {
+	switch {
+	case x.isNumber() && y.isNumber():
+		return x.number < y.number
+	case x.isText() && y.isText():
+		return x.text < y.text
+	}
+
+	panic("անհամեմատելի արժեքներ")
+}

@@ -155,11 +155,20 @@ func (i *Interpreter) evaluateBinary(b *ast.Binary) *value {
 		result = rl.array[ix]
 	case "=", "<>", ">", ">=", "<", "<=":
 		rl := i.evaluate(b.Left)
+		if rl.isArray() {
+			panic("զանգվածը չի կարող համեմատվել")
+		}
+
 		rr := i.evaluate(b.Right)
+		if rr.isArray() {
+			panic("զանգվածը չի կարող համեմատվել")
+		}
+
 		if rl.kind != rr.kind {
 			panic("կարող են համեմատվել միայն նույն տիպի արժեքները")
 		}
-		// TODO
+
+		return operations[b.Operation](rl, rr)
 	}
 
 	return result

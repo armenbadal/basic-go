@@ -8,7 +8,7 @@ import (
 
 func main() {
 	fmt.Println("Բալ ալգորիթմական լեզվի իրականացումը Go լեզվով։")
-	fmt.Println()
+	fmt.Println("--------------------------------------------")
 
 	pars, err := parser.New("../examples/ex01.bas")
 	if nil == err {

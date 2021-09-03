@@ -26,6 +26,21 @@ var operations = map[string]binary{
 	},
 	// համեմատումներ
 	"=": func(r, l *value) *value {
-		return &value{kind: vBoolean}
+		return &value{kind: vBoolean, boolean: eq(r, l)}
+	},
+	"<>": func(r, l *value) *value {
+		return &value{kind: vBoolean, boolean: !eq(r, l)}
+	},
+	"<": func(r, l *value) *value {
+		return &value{kind: vBoolean, boolean: lt(r, l)}
+	},
+	"<=": func(r, l *value) *value {
+		return &value{kind: vBoolean, boolean: lt(r, l) || eq(l, r)}
+	},
+	">": func(r, l *value) *value {
+		return &value{kind: vBoolean, boolean: !lt(r, l) && !eq(l, r)}
+	},
+	">=": func(r, l *value) *value {
+		return &value{kind: vBoolean, boolean: !lt(r, l)}
 	},
 }
