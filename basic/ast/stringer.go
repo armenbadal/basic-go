@@ -101,6 +101,16 @@ func (w *While) String() string {
 	return fmt.Sprintf("%sWHILE %s\n%s%sEND WHILE", spaces, sc, sb, spaces)
 }
 
+func (w *For) String() string {
+	p := fmt.Sprint(w.Parameter)
+	b := fmt.Sprint(w.Begin)
+	e := fmt.Sprint(w.End)
+	s := fmt.Sprint(w.Step)
+	y := fmt.Sprint(w.Body)
+	return fmt.Sprintf("%sFOR %s = %s TO %s STEP %s\n%s%sEND FOR",
+		spaces, p, b, e, s, y, spaces)
+}
+
 func (s *Sequence) String() string {
 	var res string
 	indent()

@@ -1,5 +1,33 @@
 
+SUB min(a, b)
+    IF a < b THEN
+        LET min = a
+    ELSE
+        LET min = b
+    END IF
+END SUB
+
+SUB max(ar)
+    LET max = ar[0]
+    FOR i = 0 TO LEN(ar) - 1
+        IF max < ar[i] THEN
+            LET max = ar[i]
+        END IF
+    END FOR
+END SUB
+
 SUB Main
+    LET abc = [1, 2, 77, 5, 6]
+    PRINT max(abc)
+    PRINT "----> Ok"
+
+    FOR i = 1 TO 20 STEP 3
+        PRINT i
+    END FOR
+
+    LET m = min(5, 12)
+    PRINT m
+
     LET k = 1
     WHILE k <= 5
         PRINT k

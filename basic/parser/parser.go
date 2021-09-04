@@ -198,7 +198,7 @@ func (p *Parser) parseLet() ast.Node {
 //
 func (p *Parser) parseInput() ast.Node {
 	p.match(xInput)
-	name := p.lookahead.value
+	name := &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
 	return &ast.Input{Place: name}
 }
@@ -267,7 +267,7 @@ func (p *Parser) parseWhile() ast.Node {
 //
 func (p *Parser) parseFor() ast.Node {
 	p.match(xFor)
-	param := p.lookahead.value
+	param := &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
 	p.match(xEq)
 	b0 := p.parseExpression()

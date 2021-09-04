@@ -2,7 +2,11 @@ package interpreter
 
 import (
 	"basic/ast"
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 )
 
 // Interpreter Ինտերպրետատորի ստրուկտուրան
@@ -127,15 +131,15 @@ func (i *Interpreter) evaluateBinary(b *ast.Binary) *value {
 	case "AND", "OR":
 		rl := i.evaluate(b.Left)
 		if !rl.isBoolean() {
-			panic("AND գործողության ձախ կողմում սպասվում է տրամաբանական արժեք")
+			panic(b.Operation + " գործողության ձախ կողմում սպասվում է տրամաբանական արժեք")
 		}
 
 		rr := i.evaluate(b.Right)
 		if !rr.isBoolean() {
-			panic("AND գործողության աջ կողմում սպասվում է տրամաբանական արժեք")
+			panic(b.Operation + " գործողության աջ կողմում սպասվում է տրամաբանական արժեք")
 		}
 
-		// TODO
+		return operations[b.Operation](rl, rr)
 	case "[]":
 		rl := i.evaluate(b.Left)
 		if !rl.isArray() {
@@ -260,7 +264,26 @@ func (i *Interpreter) executeLet(l *ast.Let) {
 
 //
 func (i *Interpreter) executeInput(s *ast.Input) {
-	// TODO
+	pl := i.evaluate(s.Place)
+
+	fmt.Print("? ")
+	reader := bufio.NewReader(os.Stdin)
+	line, _ := reader.ReadString('\n')
+	line = strings.Trim(line, " \n\t\r")
+
+	if line == "TRUE" {
+		*pl = value{kind: vBoolean, boolean: true}
+	}
+	if line == "FALSE" {
+		*pl = value{kind: vBoolean, boolean: false}
+	}
+
+	num, err := strconv.ParseFloat(line, 64)
+	if err == nil {
+		*pl = value{kind: vNumber, number: num}
+	}
+
+	*pl = value{kind: vText, text: line}
 }
 
 //
@@ -303,7 +326,37 @@ func (i *Interpreter) executeWhile(w *ast.While) {
 
 //
 func (i *Interpreter) executeFor(f *ast.For) {
-	// TODO
+	// TODO type checks
+
+	initialize := &ast.Let{
+		Place: f.Parameter,
+		Value: f.Begin,
+	}
+
+	condition := &ast.Binary{
+		Operation: "<=",
+		Left:      f.Parameter,
+		Right:     f.End,
+	}
+
+	increment := &ast.Let{
+		Place: f.Parameter,
+		Value: &ast.Binary{
+			Operation: "+",
+			Left:      f.Parameter,
+			Right:     f.Step,
+		}}
+
+	i.execute(initialize)
+	for {
+		cv := i.evaluate(condition)
+		if !cv.boolean {
+			break
+		}
+
+		i.execute(f.Body)
+		i.execute(increment)
+	}
 }
 
 //

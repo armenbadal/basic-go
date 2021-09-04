@@ -13,7 +13,7 @@ func main() {
 	pars, err := parser.New("../examples/ex01.bas")
 	if nil == err {
 		if tree := pars.Parse(); tree != nil {
-			//println(fmt.Sprint(tree))
+			println(fmt.Sprint(tree))
 			interp := interpreter.New()
 			interp.Execute(tree)
 		}
