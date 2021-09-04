@@ -107,24 +107,24 @@ func (i *Interpreter) evaluateBinary(b *ast.Binary) *value {
 	case "+", "-", "*", "/", "\\", "^":
 		rl := i.evaluate(b.Left)
 		if !rl.isNumber() {
-			panic("Type error")
+			panic(b.Operation + " գործողության ձախ կողմում սպասվում է թվային արժեք")
 		}
 
 		rr := i.evaluate(b.Right)
 		if !rr.isNumber() {
-			panic("Type error")
+			panic(b.Operation + " գործողության աջ կողմում սպասվում է թվային արժեք")
 		}
 
 		return operations[b.Operation](rl, rr)
 	case "&":
 		rl := i.evaluate(b.Left)
 		if !rl.isText() {
-			panic("Type error")
+			panic("Type error 3")
 		}
 
 		rr := i.evaluate(b.Right)
 		if !rr.isText() {
-			panic("Type error")
+			panic("Type error 4")
 		}
 
 		result = &value{kind: vText, text: rl.text + rr.text}
@@ -273,17 +273,16 @@ func (i *Interpreter) executeInput(s *ast.Input) {
 
 	if line == "TRUE" {
 		*pl = value{kind: vBoolean, boolean: true}
-	}
-	if line == "FALSE" {
+	} else if line == "FALSE" {
 		*pl = value{kind: vBoolean, boolean: false}
+	} else {
+		num, err := strconv.ParseFloat(line, 64)
+		if err == nil {
+			*pl = value{kind: vNumber, number: num}
+		} else {
+			*pl = value{kind: vText, text: line}
+		}
 	}
-
-	num, err := strconv.ParseFloat(line, 64)
-	if err == nil {
-		*pl = value{kind: vNumber, number: num}
-	}
-
-	*pl = value{kind: vText, text: line}
 }
 
 //

@@ -47,12 +47,12 @@ func TestArray(t *testing.T) {
 }
 
 func TestVariable(t *testing.T) {
-	env := &environment{}
-	env.openScope()
-	env.set("x", &value{kind: vBoolean, boolean: true})
+	interp := New()
+	interp.env.openScope()
+	interp.env.set("x", &value{kind: vBoolean, boolean: true})
 
 	v0 := &ast.Variable{Name: "x"}
-	r0 := New().evaluate(v0)
+	r0 := interp.evaluate(v0)
 	if r0.kind != vBoolean || !r0.boolean {
 		t.Error("Failed to evaluate variable object")
 	}
