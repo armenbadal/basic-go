@@ -3,12 +3,14 @@ package parser
 const (
 	xNone = iota
 
+	// լիտերալներ
 	xNumber // թիվ
 	xText   // տեքստ
 	xIdent  // իդենտիֆիկատոր
 	xTrue   // TRUE
 	xFalse  // FALSE
 
+	// ծառայողական բառեր
 	xSubroutine // SUB
 	xDim        // DIM
 	xLet        // LET
@@ -25,6 +27,7 @@ const (
 	xCall       // CALL
 	xEnd        // END
 
+	// գործողություններ
 	xAdd // +
 	xSub // -
 	xAmp // &
@@ -44,6 +47,7 @@ const (
 	xOr  // OR
 	xNot // NOT
 
+	// կետադրական նշաններ
 	xNewLine  // <-/
 	xLeftPar  // (
 	xRightPar // )
@@ -55,9 +59,9 @@ const (
 )
 
 type lexeme struct {
-	token int
-	value string
-	line  int
+	token int    // պիտակ
+	value string // արժեք
+	line  int    // տողը
 }
 
 func (l *lexeme) is(exps ...int) bool {

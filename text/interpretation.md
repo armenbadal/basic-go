@@ -92,25 +92,7 @@ func (e *environment) set(name string, value *value) {
 
 ```Go
 func Execute(p *ast.Program) {
-	// որսալ սխալն ու արտածել հաղորդագրությունը
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Printf("Կատարման սխալ: %s։\n", err)
-		}
-	}()
-
-	// ծրագրի ցուցիչը պահել ենթածրագրերին հղվելու համար
-	program = p
-
-	// կատարման միջավայրը
-	env := &environment{}
-	env.openScope()
-
-	// Main ֆունկցաիյի մարմնի կատարում
-	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
-	execute(&cmain, env)
-
-	env.closeScope()
+	// ․․․
 }
 ```
 

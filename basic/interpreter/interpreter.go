@@ -325,7 +325,7 @@ func (i *Interpreter) executeWhile(w *ast.While) {
 
 //
 func (i *Interpreter) executeFor(f *ast.For) {
-	// TODO type checks
+	// TODO փոխել
 
 	initialize := &ast.Let{
 		Place: f.Parameter,

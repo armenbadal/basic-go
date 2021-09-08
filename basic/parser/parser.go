@@ -21,7 +21,7 @@ type Parser struct {
 	program *ast.Program
 }
 
-// NewParser Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
+// New Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
 func New(filename string) (*Parser, error) {
 	// բացել ֆայլային հոսքը
 	rd, er := os.Open(filename)
