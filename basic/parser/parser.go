@@ -267,39 +267,48 @@ func (p *Parser) parseWhile() ast.Node {
 //
 func (p *Parser) parseFor() ast.Node {
 	p.match(xFor)
+
 	param := &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
 	p.match(xEq)
-	b0 := p.parseExpression()
+	begin := p.parseExpression()
+
 	p.match(xTo)
-	e0 := p.parseExpression()
-	var num float64 = 1.0
+	end := p.parseExpression()
+
+	var step ast.Node
 	if p.has(xStep) {
 		p.match(xStep)
-		posi := true
+		sign := "+"
 		if p.has(xSub) {
 			p.match(xSub)
-			posi = false
+			sign = "-"
 		} else if p.has(xAdd) {
 			p.match(xAdd)
 		}
+
 		lex := p.lookahead.value
 		p.match(xNumber)
-		num, _ = strconv.ParseFloat(lex, 64)
-		if !posi {
-			num = -num
+		num, _ := strconv.ParseFloat(lex, 64)
+		step = &ast.Number{Value: num}
+		if sign == "-" {
+			step = &ast.Unary{Operation: sign, Right: step}
 		}
+	} else {
+		step = &ast.Number{Value: 1.0}
 	}
-	s0 := &ast.Number{Value: num}
-	dy := p.parseSequence()
+
+	body := p.parseSequence()
+
 	p.match(xEnd)
 	p.match(xFor)
+
 	return &ast.For{
 		Parameter: param,
-		Begin:     b0,
-		End:       e0,
-		Step:      s0,
-		Body:      dy}
+		Begin:     begin,
+		End:       end,
+		Step:      step,
+		Body:      body}
 }
 
 // Ենթածրագրի կանչի վերլուծությունը

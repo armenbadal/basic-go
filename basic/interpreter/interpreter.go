@@ -325,36 +325,37 @@ func (i *Interpreter) executeWhile(w *ast.While) {
 
 //
 func (i *Interpreter) executeFor(f *ast.For) {
-	// TODO փոխել
+	i.env.openScope()
+	defer i.env.closeScope()
 
-	initialize := &ast.Let{
-		Place: f.Parameter,
-		Value: f.Begin,
+	param := f.Parameter.(*ast.Variable).Name
+	begin := i.evaluate(f.Begin)
+	if !begin.isNumber() {
+		panic("FOR հրամանի պարամետրի արժեքը պետք է լինի թիվ")
+	}
+	i.env.set(param, begin.clone())
+
+	end := i.evaluate(f.End)
+	if !end.isNumber() {
+		panic("FOR հրամանի պարամետրի արժեքը պետք է լինի թիվ")
 	}
 
-	condition := &ast.Binary{
-		Operation: "<=",
-		Left:      f.Parameter,
-		Right:     f.End,
+	step := i.evaluate(f.Step)
+	if !step.isNumber() {
+		panic("FOR հրամանի պարամետրի քայլը պետք է լինի թիվ")
 	}
 
-	increment := &ast.Let{
-		Place: f.Parameter,
-		Value: &ast.Binary{
-			Operation: "+",
-			Left:      f.Parameter,
-			Right:     f.Step,
-		}}
-
-	i.execute(initialize)
 	for {
-		cv := i.evaluate(condition)
-		if !cv.boolean {
+		pv := i.env.get(param)
+		if step.number > 0 && pv.number > end.number {
+			break
+		} else if step.number < 0 && pv.number < end.number {
 			break
 		}
 
 		i.execute(f.Body)
-		i.execute(increment)
+
+		pv.number += step.number
 	}
 }
 
