@@ -4,6 +4,7 @@ import (
 	"basic/ast"
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -36,6 +37,9 @@ func (i *Interpreter) Execute(p *ast.Program) {
 
 	i.env.openScope()
 	defer i.env.closeScope()
+
+	// նախապես որոշված փոփոխականներ
+	i.env.set("pi", &value{kind: vNumber, number: math.Pi})
 
 	// Main ֆունկցաիյի մարմնի կատարում
 	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
