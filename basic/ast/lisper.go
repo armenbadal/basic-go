@@ -34,5 +34,24 @@ func (v *Variable) Lisp() string {
 }
 
 func (u *Unary) Lisp() string {
-	return fmt.Sprintf("#S(UNARY :OPERATION %q :RIGHT %s)", u.Operation, u.Right.(Lisper).Lisp())
+	rs := u.Right.(Lisper).Lisp()
+	return fmt.Sprintf("#S(UNARY :OPERATION %q :RIGHT %s)", u.Operation, rs)
+}
+
+func (b *Binary) Lisp() string {
+	ls := b.Left.(Lisper).Lisp()
+	rs := b.Right.(Lisper).Lisp()
+	return fmt.Sprintf("#S(BINARY :OPERATION %q :LEFT %s :RIGHT %s)", b.Operation, ls, rs)
+}
+
+func (b *Apply) Lisp() string {
+	asr := fmt.Sprintf("#S(APPLY :CALLEE %q :ARGUMENTS (list ", b.Callee)
+	for i, e := range b.Arguments {
+		if i != 0 {
+			asr += ", "
+		}
+		asr += e.(Lisper).Lisp()
+	}
+	asr += "))"
+	return asr
 }
