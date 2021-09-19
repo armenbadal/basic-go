@@ -17,7 +17,11 @@ func runOneFile(file string) int {
 	if tree, _ := pars.Parse(); tree != nil {
 		//println(fmt.Sprint(tree))
 		interp := interpreter.New()
-		interp.Execute(tree)
+		err := interp.Execute(tree)
+		if err != nil {
+			fmt.Println(err)
+			return 2
+		}
 	}
 
 	return 0

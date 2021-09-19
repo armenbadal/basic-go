@@ -26,13 +26,6 @@ func New() *Interpreter {
 
 // Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
 func (i *Interpreter) Execute(p *ast.Program) error {
-	// որսալ սխալն ու արտածել հաղորդագրությունը
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Printf("Կատարման սխալ: %s։\n", err)
-		}
-	}()
-
 	// ծրագրի ցուցիչը պահել ենթածրագրերին հղվելու համար
 	i.program = p
 
@@ -44,8 +37,7 @@ func (i *Interpreter) Execute(p *ast.Program) error {
 
 	// Main ֆունկցաիյի մարմնի կատարում
 	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
-	i.execute(&cmain)
-	return nil
+	return i.execute(&cmain)
 }
 
 //
