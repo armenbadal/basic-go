@@ -44,7 +44,7 @@ func New(filename string) (*Parser, error) {
 }
 
 // Parse Վերլուծությունը սկսող արտաքին ֆունկցիա
-func (p *Parser) Parse() *ast.Program {
+func (p *Parser) Parse() (*ast.Program, error) {
 	// շարահյուսական սխալի արտածում
 	defer func() {
 		if err := recover(); err != nil {
@@ -55,7 +55,7 @@ func (p *Parser) Parse() *ast.Program {
 
 	// վերլուծել ծրագիրը
 	p.parseProgram()
-	return p.program
+	return p.program, nil
 }
 
 // Վերլուծել ամբողջ ծրագիրը.

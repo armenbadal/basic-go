@@ -5,5 +5,5 @@ SUB Main
     PRINT SQR(pi^2)
 
     LET s = "Hello"
-    PRINT MID(s, 1, 2)
+    PRINT MID(s, 1, 3)
 END SUB

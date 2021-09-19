@@ -8,7 +8,7 @@ func TestOne(t *testing.T) {
 		t.Error("Failed to create parser")
 	}
 
-	tree := pars.Parse()
+	tree, _ := pars.Parse()
 	if nil == tree {
 		t.Error("failed to parse the file")
 	}
