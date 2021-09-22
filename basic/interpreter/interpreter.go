@@ -107,111 +107,136 @@ func (i *Interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
 	return result, nil
 }
 
+// թվաբանական գործողություններ
+func (i *Interpreter) evaluateArithmeticOperation(b *ast.Binary) (*value, error) {
+	rl, erl := i.evaluate(b.Left)
+	if erl != nil {
+		return nil, erl
+	}
+	if !rl.isNumber() {
+		return nil, errors.New(b.Operation + " գործողության ձախ կողմում սպասվում է թվային արժեք")
+	}
+
+	rr, err := i.evaluate(b.Right)
+	if err != nil {
+		return nil, err
+	}
+	if !rr.isNumber() {
+		return nil, errors.New(b.Operation + " գործողության աջ կողմում սպասվում է թվային արժեք")
+	}
+
+	return operations[b.Operation](rl, rr), nil
+}
+
+// տեքստերի միակցում (կոնկատենացիա)
+func (i *Interpreter) evaluateTextConcatenation(b *ast.Binary) (*value, error) {
+	rl, el := i.evaluate(b.Left)
+	if el != nil {
+		return nil, el
+	}
+	if !rl.isText() {
+		return nil, errors.New("& գործողության ձախ կողմում սպասվում է տեքստային արժեք")
+	}
+
+	rr, er := i.evaluate(b.Right)
+	if er != nil {
+		return nil, er
+	}
+	if !rr.isText() {
+		return nil, errors.New("& գործողության աջ կողմում սպասվում է տեքստային արժեք")
+	}
+
+	return &value{kind: vText, text: rl.text + rr.text}, nil
+}
+
+// տրամաբանական գործողություններ
+func (i *Interpreter) evaluateLogicOperation(b *ast.Binary) (*value, error) {
+	rl, el := i.evaluate(b.Left)
+	if el != nil {
+		return nil, el
+	}
+	if !rl.isBoolean() {
+		return nil, errors.New(b.Operation + " գործողության ձախ կողմում սպասվում է տրամաբանական արժեք")
+	}
+
+	rr, er := i.evaluate(b.Right)
+	if er != nil {
+		return nil, er
+	}
+	if !rr.isBoolean() {
+		return nil, errors.New(b.Operation + " գործողության աջ կողմում սպասվում է տրամաբանական արժեք")
+	}
+
+	return operations[b.Operation](rl, rr), nil
+}
+
+// զանգվածի ինդեքսավորման գործողություն
+func (i *Interpreter) evaluateIndexingOperation(b *ast.Binary) (*value, error) {
+	rl, el := i.evaluate(b.Left)
+	if el != nil {
+		return nil, el
+	}
+	if !rl.isArray() {
+		return nil, errors.New("[]-ի ձախ կողմում պետք է զանգված լինի")
+	}
+
+	rr, er := i.evaluate(b.Right)
+	if er != nil {
+		return nil, er
+	}
+	if !rr.isNumber() {
+		return nil, errors.New("[]-ի ինդեքսը պետք է թիվ լինի")
+	}
+
+	ix := int(rr.number)
+	if ix < 0 || ix >= len(rl.array) {
+		return nil, errors.New("ինդեքսը զանգվածի սահմաններից դուրս է")
+	}
+
+	return rl.array[ix], nil
+}
+
+// համեմատման գործողություններ
+func (i *Interpreter) evaluateComparisonOperation(b *ast.Binary) (*value, error) {
+	rl, el := i.evaluate(b.Left)
+	if el != nil {
+		return nil, el
+	}
+	if rl.isArray() {
+		return nil, errors.New("զանգվածը չի կարող համեմատվել")
+	}
+
+	rr, er := i.evaluate(b.Right)
+	if er != nil {
+		return nil, er
+	}
+	if rr.isArray() {
+		return nil, errors.New("զանգվածը չի կարող համեմատվել")
+	}
+
+	if rl.kind != rr.kind {
+		return nil, errors.New("կարող են համեմատվել միայն նույն տիպի արժեքները")
+	}
+
+	return operations[b.Operation](rl, rr), nil
+}
+
 //
 func (i *Interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
 	switch b.Operation {
 	case "+", "-", "*", "/", "\\", "^":
-		rl, erl := i.evaluate(b.Left)
-		if erl != nil {
-			return nil, erl
-		}
-		if !rl.isNumber() {
-			return nil, errors.New(b.Operation + " գործողության ձախ կողմում սպասվում է թվային արժեք")
-		}
-
-		rr, err := i.evaluate(b.Right)
-		if err != nil {
-			return nil, err
-		}
-		if !rr.isNumber() {
-			return nil, errors.New(b.Operation + " գործողության աջ կողմում սպասվում է թվային արժեք")
-		}
-
-		return operations[b.Operation](rl, rr), nil
+		return i.evaluateArithmeticOperation(b)
 	case "&":
-		rl, el := i.evaluate(b.Left)
-		if el != nil {
-			return nil, el
-		}
-		if !rl.isText() {
-			return nil, errors.New("type error 3")
-		}
-
-		rr, er := i.evaluate(b.Right)
-		if er != nil {
-			return nil, er
-		}
-		if !rr.isText() {
-			return nil, errors.New("type error 4")
-		}
-
-		return &value{kind: vText, text: rl.text + rr.text}, nil
+		return i.evaluateTextConcatenation(b)
 	case "AND", "OR":
-		rl, el := i.evaluate(b.Left)
-		if el != nil {
-			return nil, el
-		}
-		if !rl.isBoolean() {
-			return nil, errors.New(b.Operation + " գործողության ձախ կողմում սպասվում է տրամաբանական արժեք")
-		}
-
-		rr, er := i.evaluate(b.Right)
-		if er != nil {
-			return nil, er
-		}
-		if !rr.isBoolean() {
-			return nil, errors.New(b.Operation + " գործողության աջ կողմում սպասվում է տրամաբանական արժեք")
-		}
-
-		return operations[b.Operation](rl, rr), nil
+		return i.evaluateLogicOperation(b)
 	case "[]":
-		rl, el := i.evaluate(b.Left)
-		if el != nil {
-			return nil, el
-		}
-		if !rl.isArray() {
-			return nil, errors.New("[]-ի ձախ կողմում պետք է զանգված լինի")
-		}
-
-		rr, er := i.evaluate(b.Right)
-		if er != nil {
-			return nil, er
-		}
-		if !rr.isNumber() {
-			return nil, errors.New("[]-ի ինդեքսը պետք է թիվ լինի")
-		}
-
-		ix := int(rr.number)
-		if ix < 0 || ix >= len(rl.array) {
-			return nil, errors.New("ինդեքսը զանգվածի սահմաններից դուրս է")
-		}
-
-		return rl.array[ix], nil
+		return i.evaluateIndexingOperation(b)
 	case "=", "<>", ">", ">=", "<", "<=":
-		rl, el := i.evaluate(b.Left)
-		if el != nil {
-			return nil, el
-		}
-		if rl.isArray() {
-			return nil, errors.New("զանգվածը չի կարող համեմատվել")
-		}
-
-		rr, er := i.evaluate(b.Right)
-		if er != nil {
-			return nil, er
-		}
-		if rr.isArray() {
-			return nil, errors.New("զանգվածը չի կարող համեմատվել")
-		}
-
-		if rl.kind != rr.kind {
-			return nil, errors.New("կարող են համեմատվել միայն նույն տիպի արժեքները")
-		}
-
-		return operations[b.Operation](rl, rr), nil
+		return i.evaluateComparisonOperation(b)
 	}
 
-	return nil, errors.New("??")
+	return nil, errors.New("անծանոթ երկտեղանի գործողություն")
 }
 
 //
@@ -250,7 +275,7 @@ func (i *Interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 		return result, nil
 	}
 
-	// նախապատվությունը տալիս ենք ներդրված ենթածրագրերին (?)
+	//
 	if bf, exists := builtins[a.Callee]; exists {
 		return bf(avals...), nil
 	}

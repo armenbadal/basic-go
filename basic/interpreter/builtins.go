@@ -8,18 +8,26 @@ import (
 
 var builtins = map[string]func(args ...*value) *value{
 	"LEN": func(args ...*value) *value {
+		if len(args) != 1 {
+			return &value{}
+		}
+
 		ag := args[0]
 		if ag.isArray() {
 			return &value{kind: vNumber, number: float64(len(ag.array))}
 		}
 
 		if ag.isText() {
-			return &value{kind: vNumber, number: float64(len(args[0].text))}
+			return &value{kind: vNumber, number: float64(len(ag.text))}
 		}
 
 		return &value{}
 	},
 	"STR": func(args ...*value) *value {
+		if len(args) != 1 {
+			return &value{}
+		}
+
 		ag := args[0]
 		if ag.isNumber() {
 			return &value{kind: vText, text: fmt.Sprintf("%f", ag.number)}
@@ -28,6 +36,10 @@ var builtins = map[string]func(args ...*value) *value{
 		return &value{}
 	},
 	"NUM": func(args ...*value) *value {
+		if len(args) != 1 {
+			return &value{}
+		}
+
 		ag := args[0]
 		if ag.isText() {
 			nv, _ := strconv.ParseFloat(ag.text, 64)
@@ -37,6 +49,10 @@ var builtins = map[string]func(args ...*value) *value{
 		return &value{}
 	},
 	"SQR": func(args ...*value) *value {
+		if len(args) != 1 {
+			return &value{}
+		}
+
 		ag := args[0]
 		if ag.isNumber() {
 			return &value{kind: vNumber, number: math.Sqrt(ag.number)}
