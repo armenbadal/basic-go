@@ -11,52 +11,46 @@ import (
 	"strings"
 )
 
-// Interpreter Ինտերպրետատորի ստրուկտուրան
-type Interpreter struct {
+// interpreter Ինտերպրետատորի ստրուկտուրան
+type interpreter struct {
 	// Կատարվող ծրագրի ցուցիչը
 	program *ast.Program
 	// կատարման միջավայրը
 	env *environment
 }
 
-// NewInterpreter Նոր ինտերպրետատոր օբյեկտ
-func New() *Interpreter {
-	return &Interpreter{program: nil, env: &environment{}}
-}
-
 // Execute Կատարում է ամբողջ ծրագիրը՝ սկսելով Main անունով ենթածրագրից։
-func (i *Interpreter) Execute(p *ast.Program) error {
-	// ծրագրի ցուցիչը պահել ենթածրագրերին հղվելու համար
-	i.program = p
+func Execute(p *ast.Program) error {
+	i := &interpreter{program: p, env: &environment{}}
 
 	i.env.openScope()
 	defer i.env.closeScope()
 
-	// նախապես որոշված փոփոխականներ
+	// նախապես սահմանված փոփոխականներ
 	i.env.set("pi", &value{kind: vNumber, number: math.Pi})
 
-	// Main ֆունկցաիյի մարմնի կատարում
+	// Main ֆունկցիայի կատարում
 	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
 	return i.execute(&cmain)
 }
 
 //
-func (i *Interpreter) evaluateBoolean(b *ast.Boolean) (*value, error) {
+func (i *interpreter) evaluateBoolean(b *ast.Boolean) (*value, error) {
 	return &value{kind: vBoolean, boolean: b.Value}, nil
 }
 
 //
-func (i *Interpreter) evaluateNumber(n *ast.Number) (*value, error) {
+func (i *interpreter) evaluateNumber(n *ast.Number) (*value, error) {
 	return &value{kind: vNumber, number: n.Value}, nil
 }
 
 //
-func (i *Interpreter) evaluateText(t *ast.Text) (*value, error) {
+func (i *interpreter) evaluateText(t *ast.Text) (*value, error) {
 	return &value{kind: vText, text: t.Value}, nil
 }
 
 //
-func (i *Interpreter) evaluateArray(a *ast.Array) (*value, error) {
+func (i *interpreter) evaluateArray(a *ast.Array) (*value, error) {
 	els := len(a.Elements)
 	res := &value{kind: vArray, array: make([]*value, els)}
 	for j, e := range a.Elements {
@@ -70,7 +64,7 @@ func (i *Interpreter) evaluateArray(a *ast.Array) (*value, error) {
 }
 
 //
-func (i *Interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
+func (i *interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
 	if vp := i.env.get(v.Name); vp != nil {
 		return vp, nil
 	}
@@ -80,7 +74,7 @@ func (i *Interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
 }
 
 //
-func (i *Interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
+func (i *interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
 	var result *value
 
 	switch u.Operation {
@@ -108,7 +102,7 @@ func (i *Interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
 }
 
 // թվաբանական գործողություններ
-func (i *Interpreter) evaluateArithmeticOperation(b *ast.Binary) (*value, error) {
+func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
 	rl, erl := i.evaluate(b.Left)
 	if erl != nil {
 		return nil, erl
@@ -129,7 +123,7 @@ func (i *Interpreter) evaluateArithmeticOperation(b *ast.Binary) (*value, error)
 }
 
 // տեքստերի միակցում (կոնկատենացիա)
-func (i *Interpreter) evaluateTextConcatenation(b *ast.Binary) (*value, error) {
+func (i *interpreter) evaluateTextConcatenation(b *ast.Binary) (*value, error) {
 	rl, el := i.evaluate(b.Left)
 	if el != nil {
 		return nil, el
@@ -150,7 +144,7 @@ func (i *Interpreter) evaluateTextConcatenation(b *ast.Binary) (*value, error) {
 }
 
 // տրամաբանական գործողություններ
-func (i *Interpreter) evaluateLogicOperation(b *ast.Binary) (*value, error) {
+func (i *interpreter) evaluateLogic(b *ast.Binary) (*value, error) {
 	rl, el := i.evaluate(b.Left)
 	if el != nil {
 		return nil, el
@@ -171,7 +165,7 @@ func (i *Interpreter) evaluateLogicOperation(b *ast.Binary) (*value, error) {
 }
 
 // զանգվածի ինդեքսավորման գործողություն
-func (i *Interpreter) evaluateIndexingOperation(b *ast.Binary) (*value, error) {
+func (i *interpreter) evaluateIndexing(b *ast.Binary) (*value, error) {
 	rl, el := i.evaluate(b.Left)
 	if el != nil {
 		return nil, el
@@ -197,7 +191,7 @@ func (i *Interpreter) evaluateIndexingOperation(b *ast.Binary) (*value, error) {
 }
 
 // համեմատման գործողություններ
-func (i *Interpreter) evaluateComparisonOperation(b *ast.Binary) (*value, error) {
+func (i *interpreter) evaluateComparison(b *ast.Binary) (*value, error) {
 	rl, el := i.evaluate(b.Left)
 	if el != nil {
 		return nil, el
@@ -222,69 +216,88 @@ func (i *Interpreter) evaluateComparisonOperation(b *ast.Binary) (*value, error)
 }
 
 //
-func (i *Interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
+func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
 	switch b.Operation {
 	case "+", "-", "*", "/", "\\", "^":
-		return i.evaluateArithmeticOperation(b)
+		return i.evaluateArithmetic(b)
 	case "&":
 		return i.evaluateTextConcatenation(b)
 	case "AND", "OR":
-		return i.evaluateLogicOperation(b)
+		return i.evaluateLogic(b)
 	case "[]":
-		return i.evaluateIndexingOperation(b)
+		return i.evaluateIndexing(b)
 	case "=", "<>", ">", ">=", "<", "<=":
-		return i.evaluateComparisonOperation(b)
+		return i.evaluateComparison(b)
 	}
 
 	return nil, errors.New("անծանոթ երկտեղանի գործողություն")
 }
 
+// Արտահայտությունների ցուցակի հաշվարկելը
+func (i *interpreter) evaluateExpressionList(es []ast.Node) ([]*value, error) {
+	result := make([]*value, len(es))
+	for j, e := range es {
+		val, err := i.evaluate(e)
+		if err != nil {
+			return nil, err
+		}
+		result[j] = val
+	}
+	return result, nil
+}
+
+// Օգտագործողի սահմանած ենթապրագրի կանչի կատարումը
+func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.Node) (*value, error) {
+	if len(args) != len(subr.Parameters) {
+		return nil, errors.New("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
+	}
+
+	// արգումենտների հաշվարկումը
+	argValues, err := i.evaluateExpressionList(args)
+	if err != nil {
+		return nil, err
+	}
+
+	// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
+	for j, p := range subr.Parameters {
+		i.env.set(p, argValues[j])
+	}
+
+	// ենթածրագրի մարմնի կատարում
+	i.env.openScope() // նոր տիրույթ
+	defer i.env.closeScope()
+	i.env.set(subr.Name, &value{kind: vUndefined})
+
+	er := i.execute(subr.Body)
+	if er != nil {
+		return nil, er
+	}
+
+	result := i.env.get(subr.Name)
+	return result, nil
+}
+
 //
-func (i *Interpreter) evaluateApply(a *ast.Apply) (*value, error) {
-	// կանչի արգումենտների հաշվարկը
-	avals := make([]*value, len(a.Arguments))
-	for j, arg := range a.Arguments {
-		val, er := i.evaluate(arg)
-		if er != nil {
-			return nil, er
-		}
-		avals[j] = val
-	}
-
+func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 	// ծրագրավորողի սահմանած ենթածրագրի կանչ
-	if uf, exists := i.program.Members[a.Callee]; exists {
-		uds := uf.(*ast.Subroutine)
-		if len(avals) != len(uds.Parameters) {
-			return nil, errors.New("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
-		}
-
-		i.env.openScope() // նոր տիրույթ
-		defer i.env.closeScope()
-		i.env.set(a.Callee, &value{kind: vUndefined})
-		// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
-		for j, p := range uds.Parameters {
-			i.env.set(p, avals[j])
-		}
-		// ենթածրագրի մարմնի կատարում
-		er := i.execute(uds.Body)
-		if er != nil {
-			return nil, er
-		}
-		result := i.env.get(a.Callee)
-
-		return result, nil
+	if subr, exists := i.program.Members[a.Callee]; exists {
+		return i.evaluateSubroutineCall(subr.(*ast.Subroutine), a.Arguments)
 	}
 
-	//
-	if bf, exists := builtins[a.Callee]; exists {
-		return bf(avals...), nil
+	// ներդրված ենթածրագրի կանչ
+	if builtin, exists := builtins[a.Callee]; exists {
+		avals, err := i.evaluateExpressionList(a.Arguments)
+		if err != nil {
+			return nil, err
+		}
+		return builtin(avals...), nil
 	}
 
 	return nil, errors.New(a.Callee + ". անծանոթ ենթածրագրի կիրառություն")
 }
 
 //
-func (i *Interpreter) evaluate(n ast.Node) (*value, error) {
+func (i *interpreter) evaluate(n ast.Node) (*value, error) {
 	var result *value
 	var err error
 
@@ -311,7 +324,7 @@ func (i *Interpreter) evaluate(n ast.Node) (*value, error) {
 }
 
 //
-func (i *Interpreter) executeDim(d *ast.Dim) error {
+func (i *interpreter) executeDim(d *ast.Dim) error {
 	sz, er := i.evaluate(d.Size)
 	if er != nil {
 		return er
@@ -329,7 +342,7 @@ func (i *Interpreter) executeDim(d *ast.Dim) error {
 }
 
 //
-func (i *Interpreter) executeLet(l *ast.Let) error {
+func (i *interpreter) executeLet(l *ast.Let) error {
 	p, ep := i.evaluate(l.Place)
 	if ep != nil {
 		return ep
@@ -345,7 +358,7 @@ func (i *Interpreter) executeLet(l *ast.Let) error {
 }
 
 //
-func (i *Interpreter) executeInput(s *ast.Input) error {
+func (i *interpreter) executeInput(s *ast.Input) error {
 	pl, er := i.evaluate(s.Place)
 	if er != nil {
 		return er
@@ -373,7 +386,7 @@ func (i *Interpreter) executeInput(s *ast.Input) error {
 }
 
 //
-func (i *Interpreter) executePrint(p *ast.Print) error {
+func (i *interpreter) executePrint(p *ast.Print) error {
 	str, er := i.evaluate(p.Value)
 	if er != nil {
 		return er
@@ -383,7 +396,7 @@ func (i *Interpreter) executePrint(p *ast.Print) error {
 }
 
 //
-func (i *Interpreter) executeIf(b *ast.If) error {
+func (i *interpreter) executeIf(b *ast.If) error {
 	cond, er := i.evaluate(b.Condition)
 	if er != nil {
 		return er
@@ -410,7 +423,7 @@ func (i *Interpreter) executeIf(b *ast.If) error {
 }
 
 //
-func (i *Interpreter) executeWhile(w *ast.While) error {
+func (i *interpreter) executeWhile(w *ast.While) error {
 	for {
 		cond, er := i.evaluate(w.Condition)
 		if er != nil {
@@ -433,7 +446,7 @@ func (i *Interpreter) executeWhile(w *ast.While) error {
 }
 
 //
-func (i *Interpreter) executeFor(f *ast.For) error {
+func (i *interpreter) executeFor(f *ast.For) error {
 	i.env.openScope()
 	defer i.env.closeScope()
 
@@ -483,13 +496,13 @@ func (i *Interpreter) executeFor(f *ast.For) error {
 }
 
 //
-func (i *Interpreter) executeCall(c *ast.Call) error {
+func (i *interpreter) executeCall(c *ast.Call) error {
 	_, er := i.evaluateApply(c)
 	return er
 }
 
 //
-func (i *Interpreter) executeSequence(s *ast.Sequence) error {
+func (i *interpreter) executeSequence(s *ast.Sequence) error {
 	i.env.openScope()
 	defer i.env.closeScope()
 
@@ -504,7 +517,7 @@ func (i *Interpreter) executeSequence(s *ast.Sequence) error {
 }
 
 //
-func (i *Interpreter) execute(n ast.Node) error {
+func (i *interpreter) execute(n ast.Node) error {
 	var err error
 
 	switch s := n.(type) {
