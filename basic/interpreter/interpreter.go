@@ -23,6 +23,7 @@ type interpreter struct {
 func Execute(p *ast.Program) error {
 	i := &interpreter{program: p, env: &environment{}}
 
+	// գլոբալ տեսանելիության տիրույթ
 	i.env.openScope()
 	defer i.env.closeScope()
 

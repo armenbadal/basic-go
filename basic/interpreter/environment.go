@@ -1,8 +1,8 @@
 package interpreter
 
 type scope struct {
-	items map[string]*value
-	up    *scope
+	items map[string]*value // փոփոխականների ընթացիկ արժեքներ
+	up    *scope            // ընդգրկող scope-ի ցուցիչ
 }
 
 // Environment Կատարման միջավայրը
@@ -25,20 +25,20 @@ func (e *environment) closeScope() {
 	}
 }
 
-// Set ֆունկցիան միջավայրում ավելացնում է տրված անվան տրված արժեքը
+// set ֆունկցիան միջավայրում ավելացնում է տրված անվան տրված արժեքը
 func (e *environment) set(name string, value *value) {
-	e.current.items[name] = value
+	if e.current != nil {
+		e.current.items[name] = value
+	}
 }
 
-// Get ֆունկցիան միջավայրում որոնում է և վերադարձնում է տրված անվանը
+// get ֆունկցիան միջավայրում որոնում է և վերադարձնում է տրված անվանը
 // համապատասխանող արժեքը։
 func (e *environment) get(name string) *value {
-	p := e.current
-	for p != nil {
+	for p := e.current; p != nil; p = p.up {
 		if v, exists := p.items[name]; exists {
 			return v
 		}
-		p = p.up
 	}
 
 	return nil
