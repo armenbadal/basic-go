@@ -84,3 +84,9 @@ func TestTextLiteral(t *testing.T) {
 		t.Error(y)
 	}
 }
+
+func TestOperations(t *testing.T) {
+	scan := scannerWithInput("+ - * / \\ ^ & ( ) [ ] , = <> > >= < <=")
+
+	scan.next()
+}
