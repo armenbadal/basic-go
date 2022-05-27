@@ -13,6 +13,6 @@ END SUB
 
 
 SUB Main
-    LET m = Factorial(8)
+    LET m = Factorial(10)
     PRINT m
 END SUB
