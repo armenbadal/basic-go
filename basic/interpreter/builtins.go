@@ -6,6 +6,8 @@ import (
 	"strconv"
 )
 
+//type builtin = func(args ...*value) *value
+
 var builtins = map[string]func(args ...*value) *value{
 	"LEN": func(args ...*value) *value {
 		if len(args) != 1 {
