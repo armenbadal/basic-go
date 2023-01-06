@@ -19,7 +19,7 @@ var operations = map[string]binary{
 		return &value{kind: vNumber, number: l.number / r.number}
 	},
 	"\\": func(l, r *value) *value {
-		return &value{kind: vNumber, number: float64(int(l.number) % int(r.number))}
+		return &value{kind: vNumber, number: float64(int(l.number / r.number))}
 	},
 	"^": func(l, r *value) *value {
 		return &value{kind: vNumber, number: math.Pow(l.number, r.number)}

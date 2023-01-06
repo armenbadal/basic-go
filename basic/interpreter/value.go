@@ -7,7 +7,7 @@ import (
 
 const (
 	vUndefined = '?' // անորոշ
-	vBoolean   = 'B' // տեամաբանական
+	vBoolean   = 'B' // տրամաբանական
 	vNumber    = 'N' // թվային
 	vText      = 'T' // տեքստային
 	vArray     = 'A' // զանգված

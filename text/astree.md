@@ -134,7 +134,7 @@ type While struct {
 type For struct {
 	Parameter Node  // ցիկլի հաշվիչը
 	Begin     Node  // հաշվիչի սկզբնական արժեք
-	End       Node  // հաշվիջի վերջնական արժեք
+	End       Node  // հաշվիչի վերջնական արժեք
 	Step      Node  // հաշվիչի քայլը
 	Body      Node  // ցիկլի մարմինը
 }
