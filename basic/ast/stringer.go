@@ -137,7 +137,7 @@ func (s *Subroutine) String() string {
 
 func (p *Program) String() string {
 	var result string
-	for _, sb := range p.Members {
+	for _, sb := range p.Subroutines {
 		result += fmt.Sprint(sb)
 		result += "\n\n"
 	}

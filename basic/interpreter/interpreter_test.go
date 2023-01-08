@@ -30,7 +30,7 @@ func TestText(t *testing.T) {
 }
 
 func TestArray(t *testing.T) {
-	a0 := &ast.Array{Elements: make([]ast.Node, 3)}
+	a0 := &ast.Array{Elements: make([]ast.Expression, 3)}
 	a0.Elements[0] = &ast.Boolean{Value: false}
 	a0.Elements[1] = &ast.Number{Value: 3.1415}
 	a0.Elements[2] = &ast.Text{Value: "Hello"}

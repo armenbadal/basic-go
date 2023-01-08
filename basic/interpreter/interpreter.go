@@ -31,7 +31,7 @@ func Execute(p *ast.Program) error {
 	i.env.set("pi", &value{kind: vNumber, number: math.Pi})
 
 	// Main ֆունկցիայի կատարում
-	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Node, 0)}
+	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Expression, 0)}
 	return i.execute(&cmain)
 }
 
@@ -235,7 +235,7 @@ func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
 }
 
 // Արտահայտությունների ցուցակի հաշվարկելը
-func (i *interpreter) evaluateExpressionList(es []ast.Node) ([]*value, error) {
+func (i *interpreter) evaluateExpressionList(es []ast.Expression) ([]*value, error) {
 	result := make([]*value, len(es))
 	for j, e := range es {
 		val, err := i.evaluate(e)
@@ -248,7 +248,7 @@ func (i *interpreter) evaluateExpressionList(es []ast.Node) ([]*value, error) {
 }
 
 // Օգտագործողի սահմանած ենթապրագրի կանչի կատարումը
-func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.Node) (*value, error) {
+func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.Expression) (*value, error) {
 	if len(args) != len(subr.Parameters) {
 		return nil, errors.New("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
 	}
@@ -281,8 +281,8 @@ func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.No
 //
 func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 	// ծրագրավորողի սահմանած ենթածրագրի կանչ
-	if subr, exists := i.program.Members[a.Callee]; exists {
-		return i.evaluateSubroutineCall(subr.(*ast.Subroutine), a.Arguments)
+	if subr, exists := i.program.Subroutines[a.Callee]; exists {
+		return i.evaluateSubroutineCall(subr, a.Arguments)
 	}
 
 	// ներդրված ենթածրագրի կանչ
@@ -298,7 +298,7 @@ func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 }
 
 //
-func (i *interpreter) evaluate(n ast.Node) (*value, error) {
+func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
 	var result *value
 	var err error
 
@@ -518,7 +518,7 @@ func (i *interpreter) executeSequence(s *ast.Sequence) error {
 }
 
 //
-func (i *interpreter) execute(n ast.Node) error {
+func (i *interpreter) execute(n ast.Statement) error {
 	var err error
 
 	switch s := n.(type) {
