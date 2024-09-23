@@ -61,17 +61,22 @@ func (p *Parser) Parse() (*ast.Program, error) {
 // Վերլուծել ամբողջ ծրագիրը.
 //
 // Program = { Subroutine }.
-func (p *Parser) parseProgram() {
+func (p *Parser) parseProgram() error {
 	// բաց թողնել ֆայլի սկզբի դատարկ տողերը
 	for p.has(xNewLine) {
 		p.lookahead = p.scer.next()
 	}
 
 	for p.has(xSubroutine) {
-		p0 := p.parseSubroutine()
+		p0, err := p.parseSubroutine()
+		if err != nil {
+			return err
+		}
 		p.program.Subroutines[p0.Name] = p0
 		p.parseNewLines()
 	}
+
+	return nil
 }
 
 // Վերլուծել նոր տողերի նիշերի հաջորդականությունը
@@ -87,7 +92,7 @@ func (p *Parser) parseNewLines() {
 // Վերլուծել ենթածրագիրը
 //
 // Subroutine = 'SUB' IDENT ['(' [IDENT {',' IDENT}] ')'] Sequence 'END' SUB'.
-func (p *Parser) parseSubroutine() *ast.Subroutine {
+func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	// վերնագրի վերլուծություն
 	p.match(xSubroutine)
 	name := p.lookahead.value
@@ -110,99 +115,116 @@ func (p *Parser) parseSubroutine() *ast.Subroutine {
 	}
 
 	// մարմնի վերլուծություն
-	body := p.parseSequence()
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
 
 	p.match(xEnd)
 	p.match(xSubroutine)
 
 	// նոր ենթածրագրի օբյեկտ
-	return &ast.Subroutine{Name: name, Parameters: pars, Body: body}
+	return &ast.Subroutine{Name: name, Parameters: pars, Body: body}, nil
 }
 
 // Վերլուծել հրամանների հաջորդականություն
 //
 // Sequence = NewLines { Statement NewLines }.
-func (p *Parser) parseSequence() *ast.Sequence {
+func (p *Parser) parseSequence() (*ast.Sequence, error) {
 	p.parseNewLines()
 	seq := &ast.Sequence{Items: make([]ast.Statement, 0)}
+	var err error
 loop:
 	for {
 		var stat ast.Statement
 		switch {
 		case p.has(xDim):
-			stat = p.parseDim()
+			stat, err = p.parseDim()
 		case p.has(xLet):
-			stat = p.parseLet()
+			stat, err = p.parseLet()
 		case p.has(xInput):
-			stat = p.parseInput()
+			stat, err = p.parseInput()
 		case p.has(xPrint):
-			stat = p.parsePrint()
+			stat, err = p.parsePrint()
 		case p.has(xIf):
-			stat = p.parseIf()
+			stat, err = p.parseIf()
 		case p.has(xWhile):
-			stat = p.parseWhile()
+			stat, err = p.parseWhile()
 		case p.has(xFor):
-			stat = p.parseFor()
+			stat, err = p.parseFor()
 		case p.has(xCall):
-			stat = p.parseCall()
+			stat, err = p.parseCall()
 		default:
 			break loop
 		}
 		p.parseNewLines()
 		seq.Items = append(seq.Items, stat)
 	}
-	return seq
+	return seq, err
 }
 
 // Վերլուծել զանգվածի սահմանման հրամանը
 //
 // Statement = 'DIM' IDENT '[' Expression ']'.
-func (p *Parser) parseDim() ast.Statement {
+func (p *Parser) parseDim() (ast.Statement, error) {
 	p.match(xDim)
 	nm := p.lookahead.value
 	p.match(xIdent)
 	p.match(xLeftBr)
-	sz := p.parseExpression()
+	sz, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
 	p.match(xRightBr)
-	return &ast.Dim{Name: nm, Size: sz}
+	return &ast.Dim{Name: nm, Size: sz}, nil
 }
 
 // Վերլուծել վերագրման հրամանը
 //
 // Statement = 'LET' IDENT '=' Expression.
-func (p *Parser) parseLet() ast.Statement {
+func (p *Parser) parseLet() (ast.Statement, error) {
 	p.match(xLet)
 	var pl ast.Statement = &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
 	for p.has(xLeftBr) {
 		p.match(xLeftBr)
-		e := p.parseExpression()
+		e, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
 		p.match(xRightBr)
 		pl = &ast.Binary{Operation: "[]", Left: pl, Right: e}
 	}
 
 	p.match(xEq)
-	e0 := p.parseExpression()
-	return &ast.Let{Place: pl, Value: e0}
+	e0, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	return &ast.Let{Place: pl, Value: e0}, nil
 }
 
 // Ներմուծման հրամանի վերլուծությունը.
 //
 // Statement = 'INPUT' IDENT.
-func (p *Parser) parseInput() ast.Statement {
+func (p *Parser) parseInput() (ast.Statement, error) {
 	p.match(xInput)
 	name := &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
-	return &ast.Input{Place: name}
+	return &ast.Input{Place: name}, nil
 }
 
 // Արտածման հրամանի վերլուծությունը.
 //
 // Statement = 'PRINT' Expression.
-func (p *Parser) parsePrint() ast.Statement {
+func (p *Parser) parsePrint() (ast.Statement, error) {
 	p.match(xPrint)
-	e0 := p.parseExpression()
-	return &ast.Print{Value: e0}
+	e0, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Print{Value: e0}, nil
 }
 
 // Ճյուղավորման հրամանի վերլուծությունը.
@@ -212,42 +234,64 @@ func (p *Parser) parsePrint() ast.Statement {
 //	{ 'ELSEIF' Expression 'THEN' Sequence }
 //	[ 'ELSE' Sequence ]
 //	'END' 'IF'.
-func (p *Parser) parseIf() *ast.If {
+func (p *Parser) parseIf() (ast.Statement, error) {
 	p.match(xIf)
-	c0 := p.parseExpression()
+	c0, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
 	p.match(xThen)
-	s0 := p.parseSequence()
+	s0, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
 	res := &ast.If{Condition: c0, Decision: s0}
 	ipe := res
 	for p.has(xElseIf) {
 		p.match(xElseIf)
-		c1 := p.parseExpression()
+		c1, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
 		p.match(xThen)
-		s1 := p.parseSequence()
+		s1, err := p.parseSequence()
+		if err != nil {
+			return nil, err
+		}
 		alt := &ast.If{Condition: c1, Decision: s1}
 		ipe.Alternative = alt
 		ipe = alt
 	}
 	if p.has(xElse) {
 		p.match(xElse)
-		s2 := p.parseSequence()
+		s2, err := p.parseSequence()
+		if err != nil {
+			return nil, err
+		}
 		ipe.Alternative = s2
 	}
 	p.match(xEnd)
 	p.match(xIf)
-	return res
+	return res, nil
 }
 
 // Նախապայմանով ցիկլի վերլուծությունը
 //
 // Statement = 'WHILE' Expression Sequence 'END' 'WHILE'.
-func (p *Parser) parseWhile() ast.Statement {
+func (p *Parser) parseWhile() (ast.Statement, error) {
 	p.match(xWhile)
-	c0 := p.parseExpression()
-	b0 := p.parseSequence()
+	c0, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	b0, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
 	p.match(xEnd)
 	p.match(xWhile)
-	return &ast.While{Condition: c0, Body: b0}
+	return &ast.While{Condition: c0, Body: b0}, err
 }
 
 // Պարամետրով ցիկլի վերլուծությունը
@@ -256,16 +300,22 @@ func (p *Parser) parseWhile() ast.Statement {
 //
 //	['STEP' ['+'|'-'] NUMBER Sequence
 //	'END' 'FOR'.
-func (p *Parser) parseFor() ast.Statement {
+func (p *Parser) parseFor() (ast.Statement, error) {
 	p.match(xFor)
 
 	param := &ast.Variable{Name: p.lookahead.value}
 	p.match(xIdent)
 	p.match(xEq)
-	begin := p.parseExpression()
+	begin, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
 
 	p.match(xTo)
-	end := p.parseExpression()
+	end, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
 
 	var step ast.Expression
 	if p.has(xStep) {
@@ -289,7 +339,10 @@ func (p *Parser) parseFor() ast.Statement {
 		step = &ast.Number{Value: 1.0}
 	}
 
-	body := p.parseSequence()
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
 
 	p.match(xEnd)
 	p.match(xFor)
@@ -299,61 +352,82 @@ func (p *Parser) parseFor() ast.Statement {
 		Begin:     begin,
 		End:       end,
 		Step:      step,
-		Body:      body}
+		Body:      body}, nil
 }
 
 // Ենթածրագրի կանչի վերլուծությունը
 //
 // Statement = 'CALL' IDENT [Expression {',' Expression}].
-func (p *Parser) parseCall() ast.Statement {
+func (p *Parser) parseCall() (ast.Statement, error) {
 	p.match(xCall)
 	name := p.lookahead.value
 	p.match(xIdent)
 	args := make([]ast.Expression, 0)
 	if p.isExprFirst() {
-		e0 := p.parseExpression()
+		e0, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
 		args = append(args, e0)
 		for p.has(xComma) {
 			p.match(xComma)
-			e1 := p.parseExpression()
+			e1, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
 			args = append(args, e1)
 		}
 	}
 
-	return &ast.Call{Callee: name, Arguments: args}
+	return &ast.Call{Callee: name, Arguments: args}, nil
 }
 
 // Արտահայտություն
 //
 // Expression = Conjunction { OR Conjunction }.
-func (p *Parser) parseExpression() ast.Expression {
-	res := p.parseConjunction()
+func (p *Parser) parseExpression() (ast.Expression, error) {
+	res, err := p.parseConjunction()
+	if err != nil {
+		return nil, err
+	}
 	for p.has(xOr) {
 		p.match(xOr)
-		e0 := p.parseConjunction()
+		e0, err := p.parseConjunction()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: "OR", Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Կոնյունկցիա
 //
 // Conjunction = Equality { AND Equality }.
-func (p *Parser) parseConjunction() ast.Expression {
-	res := p.parseEquality()
+func (p *Parser) parseConjunction() (ast.Expression, error) {
+	res, err := p.parseEquality()
+	if err != nil {
+		return nil, err
+	}
 	for p.has(xAnd) {
 		p.match(xAnd)
-		e0 := p.parseEquality()
+		e0, err := p.parseEquality()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: "AND", Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Հավասարություն
 //
 // Equality = Comparison [('=' | '<>') Comparison].
-func (p *Parser) parseEquality() ast.Expression {
-	res := p.parseComparison()
+func (p *Parser) parseEquality() (ast.Expression, error) {
+	res, err := p.parseComparison()
+	if err != nil {
+		return nil, err
+	}
 	if p.has(xEq, xNe) {
 		var opc string
 		switch p.lookahead.token {
@@ -364,17 +438,23 @@ func (p *Parser) parseEquality() ast.Expression {
 			opc = "<>"
 			p.match(xNe)
 		}
-		e0 := p.parseComparison()
+		e0, err := p.parseComparison()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Համեմատություն
 //
 // Comparison = Addition [('>' | '>=' | '<' | '<=') Addition].
-func (p *Parser) parseComparison() ast.Expression {
-	res := p.parseAddition()
+func (p *Parser) parseComparison() (ast.Expression, error) {
+	res, err := p.parseAddition()
+	if err != nil {
+		return nil, err
+	}
 	if p.has(xGt, xGe, xLt, xLe) {
 		var opc string
 		switch p.lookahead.token {
@@ -391,17 +471,23 @@ func (p *Parser) parseComparison() ast.Expression {
 			opc = "<="
 			p.match(xLe)
 		}
-		e0 := p.parseAddition()
+		e0, err := p.parseAddition()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Գումարում, հանում կամ տողերի կոնկատենացիա
 //
 // Addition = Multiplication {('+' | '-' | '&') Multiplication}.
-func (p *Parser) parseAddition() ast.Expression {
-	res := p.parseMultiplication()
+func (p *Parser) parseAddition() (ast.Expression, error) {
+	res, err := p.parseMultiplication()
+	if err != nil {
+		return nil, err
+	}
 	for p.has(xAdd, xSub, xAmp) {
 		var opc string
 		switch p.lookahead.token {
@@ -415,17 +501,23 @@ func (p *Parser) parseAddition() ast.Expression {
 			opc = "&"
 			p.match(xAmp)
 		}
-		e0 := p.parseMultiplication()
+		e0, err := p.parseMultiplication()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Բազմապատկում, բաժանում կամ մնացորդ
 //
 // Multiplication = Power {('*' | '/' | '\') Power}.
-func (p *Parser) parseMultiplication() ast.Expression {
-	res := p.parsePower()
+func (p *Parser) parseMultiplication() (ast.Expression, error) {
+	res, err := p.parsePower()
+	if err != nil {
+		return nil, err
+	}
 	for p.has(xMul, xDiv, xMod) {
 		var opc string
 		switch p.lookahead.token {
@@ -439,37 +531,55 @@ func (p *Parser) parseMultiplication() ast.Expression {
 			opc = "\\"
 			p.match(xMod)
 		}
-		e0 := p.parsePower()
+		e0, err := p.parsePower()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Ատիճան բարձրացնելու գործողությունը
 //
 // Power = Index ['^' Power].
-func (p *Parser) parsePower() ast.Expression {
-	res := p.parseSubscript()
+func (p *Parser) parsePower() (ast.Expression, error) {
+	res, err := p.parseSubscript()
+	if err != nil {
+		return nil, err
+	}
 	if p.has(xPow) {
 		p.match(xPow)
-		e0 := p.parsePower()
+		e0, err := p.parsePower()
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: "^", Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Ինդեքսավորման գործողությունը
 //
 // Index = Factor {'[' Expression ']'}.
-func (p *Parser) parseSubscript() ast.Expression {
-	res := p.parseFactor()
+func (p *Parser) parseSubscript() (ast.Expression, error) {
+	res, err := p.parseFactor()
+	if err != nil {
+		return nil, err
+	}
 	for p.has(xLeftBr) {
 		p.match(xLeftBr)
-		e0 := p.parseExpression()
-		p.match(xRightBr)
+		e0, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		err = p.match(xRightBr)
+		if err != nil {
+			return nil, err
+		}
 		res = &ast.Binary{Operation: "[]", Left: res, Right: e0}
 	}
-	return res
+	return res, nil
 }
 
 // Պարզագույն արտահայտությունների վերլուծությունը
@@ -482,70 +592,77 @@ func (p *Parser) parseSubscript() ast.Expression {
 //	| SUB Factor
 //	| NOT Factor
 //	| '(' Expression ')'.
-func (p *Parser) parseFactor() ast.Expression {
+func (p *Parser) parseFactor() (ast.Expression, error) {
 	var result ast.Expression
+	var err error
 
 	switch {
 	case p.has(xTrue, xFalse):
-		result = p.parseTrueOrFalse()
+		result, err = p.parseTrueOrFalse()
 	case p.has(xNumber):
-		result = p.parseNumber()
+		result, err = p.parseNumber()
 	case p.has(xText):
-		result = p.parseText()
+		result, err = p.parseText()
 	case p.has(xLeftBr):
-		result = p.parseArrayLiteral()
+		result, err = p.parseArrayLiteral()
 	case p.has(xIdent):
-		result = p.parseIdentOrApply()
+		result, err = p.parseIdentOrApply()
 	case p.has(xSub, xNot):
-		result = p.parseUnary()
+		result, err = p.parseUnary()
 	case p.has(xLeftPar):
-		result = p.parseGrouping()
+		result, err = p.parseGrouping()
 	default:
-		panic("պարզագույն արտահայտության սխալ")
+		err = fmt.Errorf("պարզագույն արտահայտության սխալ")
 	}
 
-	return result
+	return result, err
 }
 
 // տրամաբանական լիտերալ, TRUE կամ FALSE
-func (p *Parser) parseTrueOrFalse() ast.Expression {
+func (p *Parser) parseTrueOrFalse() (ast.Expression, error) {
 	lex := strings.ToUpper(p.lookahead.value)
 	p.match(p.lookahead.token)
-	return &ast.Boolean{Value: lex == "TRUE"}
+	return &ast.Boolean{Value: lex == "TRUE"}, nil
 }
 
 // թվային լիտերալ
-func (p *Parser) parseNumber() ast.Expression {
+func (p *Parser) parseNumber() (ast.Expression, error) {
 	lex := p.lookahead.value
 	p.match(xNumber)
 	val, _ := strconv.ParseFloat(lex, 64)
-	return &ast.Number{Value: val}
+	return &ast.Number{Value: val}, nil
 }
 
 // տեքստային լիտերալ
-func (p *Parser) parseText() ast.Expression {
+func (p *Parser) parseText() (ast.Expression, error) {
 	val := p.lookahead.value
 	p.match(xText)
-	return &ast.Text{Value: val}
+	return &ast.Text{Value: val}, nil
 }
 
 // զանգվածի լիտերալ
-func (p *Parser) parseArrayLiteral() ast.Expression {
+func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
 	elems := make([]ast.Expression, 0)
 	p.match(xLeftBr)
-	e := p.parseExpression()
+	e, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
 	elems = append(elems, e)
 	for p.has(xComma) {
 		p.match(xComma)
-		e := p.parseExpression()
+		e, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
 		elems = append(elems, e)
 	}
 	p.match(xRightBr)
-	return &ast.Array{Elements: elems}
+	return &ast.Array{Elements: elems}, nil
 }
 
 // իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
-func (p *Parser) parseIdentOrApply() ast.Expression {
+func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
 	name := p.lookahead.value
 	p.match(xIdent)
 
@@ -553,23 +670,32 @@ func (p *Parser) parseIdentOrApply() ast.Expression {
 		p.match(xLeftPar)
 		args := make([]ast.Expression, 0)
 		if p.isExprFirst() {
-			e0 := p.parseExpression()
+			e0, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
 			args = append(args, e0)
 			for p.has(xComma) {
 				p.match(xComma)
-				e1 := p.parseExpression()
+				e1, err := p.parseExpression()
+				if err != nil {
+					return nil, err
+				}
 				args = append(args, e1)
 			}
 		}
-		p.match(xRightPar)
-		return &ast.Apply{Callee: name, Arguments: args}
+		err := p.match(xRightPar)
+		if err != nil {
+			return nil, err
+		}
+		return &ast.Apply{Callee: name, Arguments: args}, nil
 	}
 
-	return &ast.Variable{Name: name}
+	return &ast.Variable{Name: name}, nil
 }
 
 // ունար գործողություն
-func (p *Parser) parseUnary() ast.Expression {
+func (p *Parser) parseUnary() (ast.Expression, error) {
 	var opc string
 	switch p.lookahead.token {
 	case xSub:
@@ -579,17 +705,31 @@ func (p *Parser) parseUnary() ast.Expression {
 		opc = "NOT"
 		p.match(xNot)
 	}
-	res := p.parseFactor()
+
+	res, err := p.parseFactor()
+	if err != nil {
+		return nil, err
+	}
+
 	res = &ast.Unary{Operation: opc, Right: res}
-	return res
+	return res, nil
 }
 
 // փակագծեր
-func (p *Parser) parseGrouping() ast.Expression {
+func (p *Parser) parseGrouping() (ast.Expression, error) {
 	p.match(xLeftPar)
-	res := p.parseExpression()
-	p.match(xRightPar)
-	return res
+
+	res, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.match(xRightPar)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (p *Parser) has(tokens ...int) bool {
@@ -600,10 +740,11 @@ func (p *Parser) isExprFirst() bool {
 	return p.has(xTrue, xFalse, xNumber, xText, xIdent, xSub, xNot, xLeftPar, xLeftBr)
 }
 
-func (p *Parser) match(exp int) {
+func (p *Parser) match(exp int) error {
 	if p.lookahead.is(exp) {
 		p.lookahead = p.scer.next()
-	} else {
-		panic(fmt.Sprintf("Տող %d. Վերլուծության սխալ\n", p.lookahead.line))
+		return nil
 	}
+
+	return fmt.Errorf("տող %d. Վերլուծության սխալ", p.lookahead.line)
 }
