@@ -48,7 +48,7 @@ func (p *Parser) Parse() (*ast.Program, error) {
 	err := p.parseProgram()
 	if err != nil {
 		// շարահյուսական սխալի արտածում
-		fmt.Printf("Parse Error: %s\n", err)
+		fmt.Printf("ՍԽԱԼ: %s\n", err)
 		return nil, err
 	}
 
