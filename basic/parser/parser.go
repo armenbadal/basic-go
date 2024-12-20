@@ -48,7 +48,7 @@ func (p *Parser) Parse() (*ast.Program, error) {
 	err := p.parseProgram()
 	if err != nil {
 		// շարահյուսական սխալի արտածում
-		fmt.Printf("Parse Error: %s\n", err)
+		fmt.Printf("ՍԽԱԼ: %s\n", err)
 		return nil, err
 	}
 
@@ -65,11 +65,11 @@ func (p *Parser) parseProgram() error {
 	}
 
 	for p.has(xSubroutine) {
-		p0, err := p.parseSubroutine()
+		subr, err := p.parseSubroutine()
 		if err != nil {
 			return err
 		}
-		p.program.Subroutines[p0.Name] = p0
+		p.program.Subroutines[subr.Name] = subr
 		p.parseNewLines()
 	}
 
@@ -93,7 +93,9 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	// վերնագրի վերլուծություն
 	p.next() // SUB
 	name := p.lookahead.value
-	p.match(xIdent)
+	if err := p.match(xIdent); err != nil {
+		return nil, err
+	}
 	pars := make([]string, 0)
 	if p.has(xLeftPar) {
 		p.next() // '('
@@ -104,11 +106,15 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 			for p.has(xComma) {
 				p.next() // ','
 				pnm = p.lookahead.value
-				p.match(xIdent)
+				if err := p.match(xIdent); err != nil {
+					return nil, err
+				}
 				pars = append(pars, pnm)
 			}
 		}
-		p.match(xRightPar)
+		if err := p.match(xRightPar); err != nil {
+			return nil, err
+		}
 	}
 
 	// մարմնի վերլուծություն
@@ -117,11 +123,17 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 		return nil, err
 	}
 
-	p.match(xEnd)
-	p.match(xSubroutine)
+	if err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if err := p.match(xSubroutine); err != nil {
+		return nil, err
+	}
 
 	// նոր ենթածրագրի օբյեկտ
-	return &ast.Subroutine{Name: name, Parameters: pars, Body: body}, nil
+	subr := &ast.Subroutine{Name: name, Parameters: pars, Body: body}
+
+	return subr, nil
 }
 
 // Վերլուծել հրամանների հաջորդականություն
@@ -166,13 +178,19 @@ loop:
 func (p *Parser) parseDim() (ast.Statement, error) {
 	p.next() // DIM
 	nm := p.lookahead.value
-	p.match(xIdent)
-	p.match(xLeftBr)
+	if err := p.match(xIdent); err != nil {
+		return nil, err
+	}
+	if err := p.match(xLeftBr); err != nil {
+		return nil, err
+	}
 	sz, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
-	p.match(xRightBr)
+	if err := p.match(xRightBr); err != nil {
+		return nil, err
+	}
 	return &ast.Dim{Name: nm, Size: sz}, nil
 }
 
@@ -182,18 +200,24 @@ func (p *Parser) parseDim() (ast.Statement, error) {
 func (p *Parser) parseLet() (ast.Statement, error) {
 	p.next() // LET
 	var pl ast.Statement = &ast.Variable{Name: p.lookahead.value}
-	p.match(xIdent)
+	if err := p.match(xIdent); err != nil {
+		return nil, err
+	}
 	for p.has(xLeftBr) {
 		p.next() // '('
 		e, err := p.parseExpression()
 		if err != nil {
 			return nil, err
 		}
-		p.match(xRightBr)
+		if err := p.match(xRightBr); err != nil {
+			return nil, err
+		}
 		pl = &ast.Binary{Operation: "[]", Left: pl, Right: e}
 	}
 
-	p.match(xEq)
+	if err := p.match(xEq); err != nil {
+		return nil, err
+	}
 	e0, err := p.parseExpression()
 	if err != nil {
 		return nil, err
@@ -207,7 +231,9 @@ func (p *Parser) parseLet() (ast.Statement, error) {
 func (p *Parser) parseInput() (ast.Statement, error) {
 	p.next() // INPUT
 	name := &ast.Variable{Name: p.lookahead.value}
-	p.match(xIdent)
+	if err := p.match(xIdent); err != nil {
+		return nil, err
+	}
 	return &ast.Input{Place: name}, nil
 }
 
@@ -220,7 +246,6 @@ func (p *Parser) parsePrint() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &ast.Print{Value: e0}, nil
 }
 
@@ -237,7 +262,9 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.match(xThen)
+	if err := p.match(xThen); err != nil {
+		return nil, err
+	}
 	s0, err := p.parseSequence()
 	if err != nil {
 		return nil, err
@@ -250,7 +277,9 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		p.match(xThen)
+		if err := p.match(xThen); err != nil {
+			return nil, err
+		}
 		s1, err := p.parseSequence()
 		if err != nil {
 			return nil, err
@@ -267,8 +296,12 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		}
 		ipe.Alternative = s2
 	}
-	p.match(xEnd)
-	p.match(xIf)
+	if err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if err := p.match(xIf); err != nil {
+		return nil, err
+	}
 	return res, nil
 }
 
@@ -286,8 +319,12 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		return nil, err
 	}
 
-	p.match(xEnd)
-	p.match(xWhile)
+	if err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if err := p.match(xWhile); err != nil {
+		return nil, err
+	}
 	return &ast.While{Condition: c0, Body: b0}, err
 }
 
@@ -301,14 +338,20 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 	p.next() // FOR
 
 	param := &ast.Variable{Name: p.lookahead.value}
-	p.match(xIdent)
-	p.match(xEq)
+	if err := p.match(xIdent); err != nil {
+		return nil, err
+	}
+	if err := p.match(xEq); err != nil {
+		return nil, err
+	}
 	begin, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 
-	p.match(xTo)
+	if err := p.match(xTo); err != nil {
+		return nil, err
+	}
 	end, err := p.parseExpression()
 	if err != nil {
 		return nil, err
@@ -326,7 +369,9 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 		}
 
 		lex := p.lookahead.value
-		p.match(xNumber)
+		if err := p.match(xNumber); err != nil {
+			return nil, err
+		}
 		num, _ := strconv.ParseFloat(lex, 64)
 		step = &ast.Number{Value: num}
 		if sign == "-" {
@@ -341,8 +386,12 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 		return nil, err
 	}
 
-	p.match(xEnd)
-	p.match(xFor)
+	if err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if err := p.match(xFor); err != nil {
+		return nil, err
+	}
 
 	return &ast.For{
 		Parameter: param,
@@ -358,7 +407,9 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 func (p *Parser) parseCall() (ast.Statement, error) {
 	p.next() // CALL
 	name := p.lookahead.value
-	p.match(xIdent)
+	if err := p.match(xIdent); err != nil {
+		return nil, err
+	}
 	args := make([]ast.Expression, 0)
 	if p.isExprFirst() {
 		e0, err := p.parseExpression()
@@ -562,8 +613,7 @@ func (p *Parser) parseSubscript() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = p.match(xRightBr)
-		if err != nil {
+		if err = p.match(xRightBr); err != nil {
 			return nil, err
 		}
 		res = &ast.Binary{Operation: "[]", Left: res, Right: e0}
@@ -610,7 +660,9 @@ func (p *Parser) parseFactor() (ast.Expression, error) {
 // տրամաբանական լիտերալ, TRUE կամ FALSE
 func (p *Parser) parseTrueOrFalse() (ast.Expression, error) {
 	lex := strings.ToUpper(p.lookahead.value)
-	p.match(p.lookahead.token)
+	if err := p.match(p.lookahead.token); err != nil {
+		return nil, err
+	}
 	return &ast.Boolean{Value: lex == "TRUE"}, nil
 }
 
@@ -632,7 +684,9 @@ func (p *Parser) parseText() (ast.Expression, error) {
 // զանգվածի լիտերալ
 func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
 	elems := make([]ast.Expression, 0)
-	p.match(xLeftBr)
+	if err := p.match(xLeftBr); err != nil {
+		return nil, err
+	}
 	e, err := p.parseExpression()
 	if err != nil {
 		return nil, err
@@ -646,7 +700,9 @@ func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
 		}
 		elems = append(elems, e)
 	}
-	p.match(xRightBr)
+	if err := p.match(xRightBr); err != nil {
+		return nil, err
+	}
 	return &ast.Array{Elements: elems}, nil
 }
 
@@ -673,8 +729,7 @@ func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
 				args = append(args, e1)
 			}
 		}
-		err := p.match(xRightPar)
-		if err != nil {
+		if err := p.match(xRightPar); err != nil {
 			return nil, err
 		}
 		return &ast.Apply{Callee: name, Arguments: args}, nil
@@ -705,15 +760,14 @@ func (p *Parser) parseUnary() (ast.Expression, error) {
 
 // փակագծեր
 func (p *Parser) parseGrouping() (ast.Expression, error) {
-	p.match(xLeftPar)
+	p.next() // '('
 
 	res, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.match(xRightPar)
-	if err != nil {
+	if err = p.match(xRightPar); err != nil {
 		return nil, err
 	}
 
