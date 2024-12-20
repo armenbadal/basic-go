@@ -43,7 +43,3 @@ func (e *environment) get(name string) *value {
 
 	return nil
 }
-
-func (e *environment) String() string {
-	return ""
-}
