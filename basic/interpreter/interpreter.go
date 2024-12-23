@@ -64,6 +64,7 @@ func (i *interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
 		return vp, nil
 	}
 
+	// TODO վերանայել այս կետը
 	i.env.set(v.Name, &value{})
 	return i.env.get(v.Name), nil
 }
@@ -203,6 +204,7 @@ func (i *interpreter) evaluateComparison(b *ast.Binary) (*value, error) {
 	}
 
 	if rl.kind != rr.kind {
+		print(fmt.Sprintf("%s | %s\n", rl.String(), rr.String()))
 		return nil, fmt.Errorf("կարող են համեմատվել միայն նույն տիպի արժեքները")
 	}
 
