@@ -26,19 +26,16 @@ var keywords = map[string]int{
 	"OR":     xOr,
 	"NOT":    xNot,
 	"TRUE":   xTrue,
-	"FALSE":  xFalse}
+	"FALSE":  xFalse,
+}
 
 // Բառային վերլուծիչի ստրուկտուրան
 type scanner struct {
-	// կարդալու հոսքը
-	source *bufio.Reader
+	source *bufio.Reader // կարդալու հոսքը
 
-	// ընթացիկ նիշը
-	ch rune
-	// կարդացված լեքսեմը
-	text string
-	// ընթացիկ տողը
-	line int
+	ch   rune   // ընթացիկ նիշը
+	text string // կարդացված լեքսեմը
+	line int    // ընթացիկ տողը
 }
 
 // Կարդում և վերադարձնում է հերթական լեքսեմը։
