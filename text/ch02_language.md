@@ -323,13 +323,14 @@ Conjunction = Equality { 'AND' Equality }.
 
 ```
 Program = { Subroutine }.
-Subroutine = 'SUB' IDENT ['(' IdentList ')'] Sequence 'END' SUB'.
+Subroutine = 'SUB' IDENT ['(' IdentList ')'] Sequence 'END' 'SUB'.
 IdentList = [IDENT {',' IDENT}].
 Sequence = NewLines { Statement NewLines }.
 NewLines = NEWLINE { NEWLINE }.
 Statement = 'DIM' IDENT '[' Expression ']'
-          | 'INPUT' IDENT.
+          | 'INPUT' IDENT
           | 'PRINT' Expression
+          | 'LET' IDENT '=' Expression
           | 'IF' Expression 'THEN' Sequence
             { 'ELSEIF' Expression 'THEN' Sequence }
             [ 'ELSE' Sequence ]

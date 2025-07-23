@@ -1,5 +1,7 @@
 package parser
 
+import "slices"
+
 const (
 	xNone = iota
 
@@ -65,10 +67,5 @@ type lexeme struct {
 }
 
 func (l *lexeme) is(exps ...int) bool {
-	for _, e := range exps {
-		if e == l.token {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(exps, l.token)
 }
