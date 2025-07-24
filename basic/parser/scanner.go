@@ -82,7 +82,8 @@ func (s *scanner) next() *lexeme {
 		if s.ch == '>' {
 			s.read()
 			return &lexeme{xNe, "<>", s.line}
-		} else if s.ch == '=' {
+		}
+		if s.ch == '=' {
 			s.read()
 			return &lexeme{xLe, "<=", s.line}
 		}
