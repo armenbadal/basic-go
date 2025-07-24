@@ -92,27 +92,19 @@ func (p *Parser) parseNewLines() {
 func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	// վերնագրի վերլուծություն
 	p.next() // SUB
-	name := p.lookahead.value
-	if err := p.match(xIdent); err != nil {
+	name, err := p.match(xIdent)
+	if err != nil {
 		return nil, err
 	}
-	pars := make([]string, 0)
+
+	// պարամետրեր
+	var parameters []string
 	if p.has(xLeftPar) {
-		p.next() // '('
-		if p.has(xIdent) {
-			pnm := p.lookahead.value
-			p.next() // IDENT
-			pars = append(pars, pnm)
-			for p.has(xComma) {
-				p.next() // ','
-				pnm = p.lookahead.value
-				if err := p.match(xIdent); err != nil {
-					return nil, err
-				}
-				pars = append(pars, pnm)
-			}
+		parameters, err = p.parseIdentList()
+		if err != nil {
+			return nil, err
 		}
-		if err := p.match(xRightPar); err != nil {
+		if _, err := p.match(xRightPar); err != nil {
 			return nil, err
 		}
 	}
@@ -123,17 +115,38 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 		return nil, err
 	}
 
-	if err := p.match(xEnd); err != nil {
+	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
-	if err := p.match(xSubroutine); err != nil {
+	if _, err := p.match(xSubroutine); err != nil {
 		return nil, err
 	}
 
 	// նոր ենթածրագրի օբյեկտ
-	subr := &ast.Subroutine{Name: name, Parameters: pars, Body: body}
+	subr := &ast.Subroutine{Name: name, Parameters: parameters, Body: body}
 
 	return subr, nil
+}
+
+func (p *Parser) parseIdentList() ([]string, error) {
+	identifiers := make([]string, 0)
+	if p.has(xIdent) {
+		value, err := p.match(xIdent)
+		if err != nil {
+			return nil, err
+		}
+		identifiers = append(identifiers, value)
+
+		for p.has(xComma) {
+			p.next() // ','
+			value, err = p.match(xIdent)
+			if err != nil {
+				return nil, err
+			}
+			identifiers = append(identifiers, value)
+		}
+	}
+	return identifiers, nil
 }
 
 // Վերլուծել հրամանների հաջորդականություն
@@ -177,21 +190,21 @@ loop:
 // Statement = 'DIM' IDENT '[' Expression ']'.
 func (p *Parser) parseDim() (ast.Statement, error) {
 	p.next() // DIM
-	nm := p.lookahead.value
-	if err := p.match(xIdent); err != nil {
+	name, err := p.match(xIdent)
+	if err != nil {
 		return nil, err
 	}
-	if err := p.match(xLeftBr); err != nil {
+	if _, err := p.match(xLeftBr); err != nil {
 		return nil, err
 	}
 	sz, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
-	if err := p.match(xRightBr); err != nil {
+	if _, err := p.match(xRightBr); err != nil {
 		return nil, err
 	}
-	return &ast.Dim{Name: nm, Size: sz}, nil
+	return &ast.Dim{Name: name, Size: sz}, nil
 }
 
 // Վերլուծել վերագրման հրամանը
@@ -199,30 +212,34 @@ func (p *Parser) parseDim() (ast.Statement, error) {
 // Statement = 'LET' IDENT '=' Expression.
 func (p *Parser) parseLet() (ast.Statement, error) {
 	p.next() // LET
-	var pl ast.Statement = &ast.Variable{Name: p.lookahead.value}
-	if err := p.match(xIdent); err != nil {
-		return nil, err
-	}
-	for p.has(xLeftBr) {
-		p.next() // '('
-		e, err := p.parseExpression()
-		if err != nil {
-			return nil, err
-		}
-		if err := p.match(xRightBr); err != nil {
-			return nil, err
-		}
-		pl = &ast.Binary{Operation: "[]", Left: pl, Right: e}
-	}
-
-	if err := p.match(xEq); err != nil {
-		return nil, err
-	}
-	e0, err := p.parseExpression()
+	name, err := p.match(xIdent)
 	if err != nil {
 		return nil, err
 	}
-	return &ast.Let{Place: pl, Value: e0}, nil
+	var place ast.Expression = &ast.Variable{Name: name}
+
+	for p.has(xLeftBr) {
+		p.next() // '('
+		index, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.match(xRightBr); err != nil {
+			return nil, err
+		}
+		place = &ast.Binary{Operation: "[]", Left: place, Right: index}
+	}
+
+	if _, err := p.match(xEq); err != nil {
+		return nil, err
+	}
+
+	assignable, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Let{Place: place, Value: assignable}, nil
 }
 
 // Ներմուծման հրամանի վերլուծությունը.
@@ -230,11 +247,12 @@ func (p *Parser) parseLet() (ast.Statement, error) {
 // Statement = 'INPUT' IDENT.
 func (p *Parser) parseInput() (ast.Statement, error) {
 	p.next() // INPUT
-	name := &ast.Variable{Name: p.lookahead.value}
-	if err := p.match(xIdent); err != nil {
+	name, err := p.match(xIdent)
+	if err != nil {
 		return nil, err
 	}
-	return &ast.Input{Place: name}, nil
+
+	return &ast.Input{Place: &ast.Variable{Name: name}}, nil
 }
 
 // Արտածման հրամանի վերլուծությունը.
@@ -242,11 +260,11 @@ func (p *Parser) parseInput() (ast.Statement, error) {
 // Statement = 'PRINT' Expression.
 func (p *Parser) parsePrint() (ast.Statement, error) {
 	p.next() // PRINT
-	e0, err := p.parseExpression()
+	value, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
-	return &ast.Print{Value: e0}, nil
+	return &ast.Print{Value: value}, nil
 }
 
 // Ճյուղավորման հրամանի վերլուծությունը.
@@ -262,7 +280,7 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := p.match(xThen); err != nil {
+	if _, err := p.match(xThen); err != nil {
 		return nil, err
 	}
 	s0, err := p.parseSequence()
@@ -277,7 +295,7 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := p.match(xThen); err != nil {
+		if _, err := p.match(xThen); err != nil {
 			return nil, err
 		}
 		s1, err := p.parseSequence()
@@ -296,10 +314,10 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		}
 		ipe.Alternative = s2
 	}
-	if err := p.match(xEnd); err != nil {
+	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
-	if err := p.match(xIf); err != nil {
+	if _, err := p.match(xIf); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -319,10 +337,10 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		return nil, err
 	}
 
-	if err := p.match(xEnd); err != nil {
+	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
-	if err := p.match(xWhile); err != nil {
+	if _, err := p.match(xWhile); err != nil {
 		return nil, err
 	}
 	return &ast.While{Condition: c0, Body: b0}, err
@@ -336,12 +354,12 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 //	'END' 'FOR'.
 func (p *Parser) parseFor() (ast.Statement, error) {
 	p.next() // FOR
-
-	param := &ast.Variable{Name: p.lookahead.value}
-	if err := p.match(xIdent); err != nil {
+	name, err := p.match(xIdent)
+	if err != nil {
 		return nil, err
 	}
-	if err := p.match(xEq); err != nil {
+	param := &ast.Variable{Name: name}
+	if _, err := p.match(xEq); err != nil {
 		return nil, err
 	}
 	begin, err := p.parseExpression()
@@ -349,7 +367,7 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 		return nil, err
 	}
 
-	if err := p.match(xTo); err != nil {
+	if _, err := p.match(xTo); err != nil {
 		return nil, err
 	}
 	end, err := p.parseExpression()
@@ -368,8 +386,8 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 			p.next() // '+'
 		}
 
-		lex := p.lookahead.value
-		if err := p.match(xNumber); err != nil {
+		lex, err := p.match(xNumber)
+		if err != nil {
 			return nil, err
 		}
 		num, _ := strconv.ParseFloat(lex, 64)
@@ -386,10 +404,10 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 		return nil, err
 	}
 
-	if err := p.match(xEnd); err != nil {
+	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
-	if err := p.match(xFor); err != nil {
+	if _, err := p.match(xFor); err != nil {
 		return nil, err
 	}
 
@@ -406,8 +424,8 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 // Statement = 'CALL' IDENT [Expression {',' Expression}].
 func (p *Parser) parseCall() (ast.Statement, error) {
 	p.next() // CALL
-	name := p.lookahead.value
-	if err := p.match(xIdent); err != nil {
+	name, err := p.match(xIdent)
+	if err != nil {
 		return nil, err
 	}
 	args := make([]ast.Expression, 0)
@@ -613,7 +631,7 @@ func (p *Parser) parseSubscript() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err = p.match(xRightBr); err != nil {
+		if _, err = p.match(xRightBr); err != nil {
 			return nil, err
 		}
 		res = &ast.Binary{Operation: "[]", Left: res, Right: e0}
@@ -659,11 +677,12 @@ func (p *Parser) parseFactor() (ast.Expression, error) {
 
 // տրամաբանական լիտերալ, TRUE կամ FALSE
 func (p *Parser) parseTrueOrFalse() (ast.Expression, error) {
-	lex := strings.ToUpper(p.lookahead.value)
-	if err := p.match(p.lookahead.token); err != nil {
+	lex, err := p.match(p.lookahead.token)
+	if err != nil {
 		return nil, err
 	}
-	return &ast.Boolean{Value: lex == "TRUE"}, nil
+
+	return &ast.Boolean{Value: strings.ToUpper(lex) == "TRUE"}, nil
 }
 
 // թվային լիտերալ
@@ -684,7 +703,7 @@ func (p *Parser) parseText() (ast.Expression, error) {
 // զանգվածի լիտերալ
 func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
 	elems := make([]ast.Expression, 0)
-	if err := p.match(xLeftBr); err != nil {
+	if _, err := p.match(xLeftBr); err != nil {
 		return nil, err
 	}
 	e, err := p.parseExpression()
@@ -700,7 +719,7 @@ func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
 		}
 		elems = append(elems, e)
 	}
-	if err := p.match(xRightBr); err != nil {
+	if _, err := p.match(xRightBr); err != nil {
 		return nil, err
 	}
 	return &ast.Array{Elements: elems}, nil
@@ -729,7 +748,7 @@ func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
 				args = append(args, e1)
 			}
 		}
-		if err := p.match(xRightPar); err != nil {
+		if _, err := p.match(xRightPar); err != nil {
 			return nil, err
 		}
 		return &ast.Apply{Callee: name, Arguments: args}, nil
@@ -767,7 +786,7 @@ func (p *Parser) parseGrouping() (ast.Expression, error) {
 		return nil, err
 	}
 
-	if err = p.match(xRightPar); err != nil {
+	if _, err = p.match(xRightPar); err != nil {
 		return nil, err
 	}
 
@@ -784,11 +803,12 @@ func (p *Parser) isExprFirst() bool {
 
 func (p *Parser) next() { p.lookahead = p.scer.next() }
 
-func (p *Parser) match(exp int) error {
+func (p *Parser) match(exp int) (string, error) {
 	if p.lookahead.is(exp) {
+		value := p.lookahead.value
 		p.next()
-		return nil
+		return value, nil
 	}
 
-	return fmt.Errorf("տող %d. Վերլուծության սխալ", p.lookahead.line)
+	return "", fmt.Errorf("տող %d. Վերլուծության սխալ", p.lookahead.line)
 }
