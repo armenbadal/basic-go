@@ -16,9 +16,6 @@ type Parser struct {
 	scer *scanner
 	// look-a-head սիմվոլ
 	lookahead *lexeme
-
-	// վերլուծության ծառի արմատ
-	program *ast.Program
 }
 
 // New Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
@@ -28,7 +25,6 @@ func New(filename string) (*Parser, error) {
 	if er != nil {
 		return nil, errors.New("ֆայլը բացելը ձախողվեց")
 	}
-	defer rd.Close()
 
 	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
 	pars := new(Parser)
@@ -38,42 +34,40 @@ func New(filename string) (*Parser, error) {
 	pars.scer.read()
 	pars.lookahead = pars.scer.next()
 
-	pars.program = &ast.Program{Subroutines: make(map[string]*ast.Subroutine)}
-
 	return pars, nil
 }
 
 // Parse Վերլուծությունը սկսող արտաքին ֆունկցիա
 func (p *Parser) Parse() (*ast.Program, error) {
-	err := p.parseProgram()
+	program, err := p.parseProgram()
 	if err != nil {
-		// շարահյուսական սխալի արտածում
-		fmt.Printf("ՍԽԱԼ: %s\n", err)
 		return nil, err
 	}
 
-	return p.program, nil
+	return program, nil
 }
 
 // Վերլուծել ամբողջ ծրագիրը.
 //
 // Program = { Subroutine }.
-func (p *Parser) parseProgram() error {
+func (p *Parser) parseProgram() (*ast.Program, error) {
 	// բաց թողնել ֆայլի սկզբի դատարկ տողերը
 	for p.has(xNewLine) {
 		p.next()
 	}
 
+	subroutines := make(map[string]*ast.Subroutine)
 	for p.has(xSubroutine) {
 		subr, err := p.parseSubroutine()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		p.program.Subroutines[subr.Name] = subr
+		subroutines[subr.Name] = subr
 		p.parseNewLines()
 	}
 
-	return nil
+	program := &ast.Program{Subroutines: subroutines}
+	return program, nil
 }
 
 // Վերլուծել նոր տողերի նիշերի հաջորդականությունը
