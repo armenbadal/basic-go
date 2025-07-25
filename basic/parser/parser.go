@@ -3,48 +3,33 @@ package parser
 import (
 	"basic/ast"
 	"bufio"
-	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
 
 // Parser Շարահյուսական վերլուծիչի ստրուկտուրան։
 type Parser struct {
-	// բառային վերլուծիչի ցուցիչ
-	scer *scanner
-	// look-a-head սիմվոլ
-	lookahead *lexeme
+	scanner   *scanner // բառային վերլուծիչի ցուցիչ
+	lookahead *lexeme  // look-a-head սիմվոլ
 }
 
 // New Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
-func New(filename string) (*Parser, error) {
-	// բացել ֆայլային հոսքը
-	rd, er := os.Open(filename)
-	if er != nil {
-		return nil, errors.New("ֆայլը բացելը ձախողվեց")
-	}
-
+func New(reader *bufio.Reader) (*Parser, error) {
 	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
 	pars := new(Parser)
-	pars.scer = new(scanner)
-	pars.scer.source = bufio.NewReader(rd)
-	pars.scer.line = 1
-	pars.scer.read()
-	pars.lookahead = pars.scer.next()
+	pars.scanner = new(scanner)
+	pars.scanner.source = reader
+	pars.scanner.line = 1
+	pars.scanner.read()
+	pars.lookahead = pars.scanner.next()
 
 	return pars, nil
 }
 
 // Parse Վերլուծությունը սկսող արտաքին ֆունկցիա
 func (p *Parser) Parse() (*ast.Program, error) {
-	program, err := p.parseProgram()
-	if err != nil {
-		return nil, err
-	}
-
-	return program, nil
+	return p.parseProgram()
 }
 
 // Վերլուծել ամբողջ ծրագիրը.
@@ -94,6 +79,7 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	// պարամետրեր
 	var parameters []string
 	if p.has(xLeftPar) {
+		p.next() // '('
 		parameters, err = p.parseIdentList()
 		if err != nil {
 			return nil, err
@@ -795,7 +781,7 @@ func (p *Parser) isExprFirst() bool {
 	return p.has(xTrue, xFalse, xNumber, xText, xIdent, xSub, xNot, xLeftPar, xLeftBr)
 }
 
-func (p *Parser) next() { p.lookahead = p.scer.next() }
+func (p *Parser) next() { p.lookahead = p.scanner.next() }
 
 func (p *Parser) match(exp int) (string, error) {
 	if p.lookahead.is(exp) {

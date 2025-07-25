@@ -1,9 +1,19 @@
 package parser
 
-import "testing"
+import (
+	"bufio"
+	"os"
+	"testing"
+)
 
 func TestOne(t *testing.T) {
-	pars, err := New("../../examples/ex99.bas")
+	file, er := os.Open("../../examples/ex99.bas")
+	if er != nil {
+		t.Error("ՍԽԱԼ։ ֆայլը բացելը ձախողվեց")
+	}
+	defer file.Close()
+
+	pars, err := New(bufio.NewReader(file))
 	if nil != err {
 		t.Error("Failed to create parser")
 	}
@@ -13,7 +23,7 @@ func TestOne(t *testing.T) {
 		t.Error("failed to parse the file")
 	}
 
-	if tree.Subroutines != nil && len(tree.Subroutines) != 3 {
+	if len(tree.Subroutines) != 3 {
 		t.Error("failed to parse file")
 	}
 }

@@ -3,24 +3,37 @@ package main
 import (
 	"basic/interpreter"
 	"basic/parser"
+	"bufio"
 	"fmt"
 	"os"
 )
 
-func runOneFile(file string) int {
-	pars, err := parser.New(file)
-	if err != nil {
-		fmt.Println(err)
+func runOneFile(filename string) int {
+	// բացել ֆայլային հոսքը
+	file, er := os.Open(filename)
+	if er != nil {
+		fmt.Printf("ՍԽԱԼ։ ֆայլը բացելը ձախողվեց")
 		return 1
 	}
+	defer file.Close()
 
-	if tree, _ := pars.Parse(); tree != nil {
-		//println(fmt.Sprint(tree))
-		err := interpreter.Execute(tree)
-		if err != nil {
-			fmt.Println(err)
-			return 2
-		}
+	pars, err := parser.New(bufio.NewReader(file))
+	if err != nil {
+		fmt.Println(err)
+		return 2
+	}
+
+	tree, err := pars.Parse()
+	if err != nil {
+		fmt.Println(err)
+		return 3
+	}
+	//println(fmt.Sprint(tree))
+
+	err = interpreter.Execute(tree)
+	if err != nil {
+		fmt.Println(err)
+		return 4
 	}
 
 	return 0
