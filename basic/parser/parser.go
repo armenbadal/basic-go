@@ -134,35 +134,43 @@ func (p *Parser) parseIdentList() ([]string, error) {
 // Sequence = NewLines { Statement NewLines }.
 func (p *Parser) parseSequence() (*ast.Sequence, error) {
 	p.parseNewLines()
-	seq := &ast.Sequence{Items: make([]ast.Statement, 0)}
-	var err error
-loop:
-	for {
-		var stat ast.Statement
-		switch {
-		case p.has(xDim):
-			stat, err = p.parseDim()
-		case p.has(xLet):
-			stat, err = p.parseLet()
-		case p.has(xInput):
-			stat, err = p.parseInput()
-		case p.has(xPrint):
-			stat, err = p.parsePrint()
-		case p.has(xIf):
-			stat, err = p.parseIf()
-		case p.has(xWhile):
-			stat, err = p.parseWhile()
-		case p.has(xFor):
-			stat, err = p.parseFor()
-		case p.has(xCall):
-			stat, err = p.parseCall()
-		default:
-			break loop
+
+	statements := make([]ast.Statement, 0)
+	for p.isStatementFirst() {
+		var stat, err = p.parseStatement()
+		if err != nil {
+			return nil, err
 		}
+
 		p.parseNewLines()
-		seq.Items = append(seq.Items, stat)
+		statements = append(statements, stat)
 	}
-	return seq, err
+
+	return &ast.Sequence{Items: statements}, nil
+}
+
+// Վերլուծել մեկ հրաման
+func (p *Parser) parseStatement() (ast.Statement, error) {
+	switch {
+	case p.has(xDim):
+		return p.parseDim()
+	case p.has(xLet):
+		return p.parseLet()
+	case p.has(xInput):
+		return p.parseInput()
+	case p.has(xPrint):
+		return p.parsePrint()
+	case p.has(xIf):
+		return p.parseIf()
+	case p.has(xWhile):
+		return p.parseWhile()
+	case p.has(xFor):
+		return p.parseFor()
+	case p.has(xCall):
+		return p.parseCall()
+	}
+
+	return nil, fmt.Errorf("սպասվում է հրամանի սկիզբ. DIM, LET, INPUT, PRINT, IF, WHILE, FOR, CALL, բայց հանդիպել է %s", p.lookahead.value)
 }
 
 // Վերլուծել զանգվածի սահմանման հրամանը
@@ -775,6 +783,10 @@ func (p *Parser) parseGrouping() (ast.Expression, error) {
 
 func (p *Parser) has(tokens ...int) bool {
 	return p.lookahead.is(tokens...)
+}
+
+func (p *Parser) isStatementFirst() bool {
+	return p.has(xDim, xLet, xInput, xPrint, xIf, xWhile, xFor, xCall)
 }
 
 func (p *Parser) isExprFirst() bool {
