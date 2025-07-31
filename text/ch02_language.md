@@ -25,8 +25,8 @@ Program = { Subroutine }.
 __Ենթածրագիրը__՝ `Subroutine`, ինքնուրույն, իմաստալից գործողության սահմանումն է, համարժեքն է համարյա բոլոր ծրագրավորման լեզուներում հանդիպող պրոցեդուրաներին կամ ֆունկցիաներին։ Այն կարող է ստանալ արգումենտներ՝ իր պարամետրերի միջոցով, և վերադարձնել արժեք։
 
 ```
-Subroutine = 'SUB' IDENT ['(' IdentList ')'] Sequence 'END' SUB'.
-IdentList = [IDENT {',' IDENT}].
+Subroutine = 'SUB' IDENT ['(' [IdentList] ')'] Sequence 'END' SUB'.
+IdentList = IDENT {',' IDENT}.
 ```
 
 Այստեղ օգտագործված `[` և `]` փակագծերով որոշվում է «պարփակված արտահայտության առկայություն կամ բացակայություն»։ Այսինքն՝ տվյալ դեպքում նշված է, որ իդենտիֆիկատորների ցուցակը կարող է նաև դատարկ լինել։ Նաև նշված է, որ երբ պարամետրերի ցուցակը դատարկ է, ապա կարելի է բաց թողնել նաև կլոր փակագծերը։ Օրինակ, ենթածրագրերի `SUB Ok()` և `SUB Ok` վերնագրերը համարժեք են։
@@ -323,8 +323,8 @@ Conjunction = Equality { 'AND' Equality }.
 
 ```
 Program = { Subroutine }.
-Subroutine = 'SUB' IDENT ['(' IdentList ')'] Sequence 'END' 'SUB'.
-IdentList = [IDENT {',' IDENT}].
+Subroutine = 'SUB' IDENT ['(' [IdentList] ')'] Sequence 'END' 'SUB'.
+IdentList = IDENT {',' IDENT}.
 Sequence = NewLines { Statement NewLines }.
 NewLines = NEWLINE { NEWLINE }.
 Statement = 'DIM' IDENT '[' Expression ']'

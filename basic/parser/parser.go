@@ -17,13 +17,10 @@ type Parser struct {
 // New Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
 func New(reader *bufio.Reader) (*Parser, error) {
 	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
-	pars := new(Parser)
-	pars.scanner = new(scanner)
-	pars.scanner.source = reader
-	pars.scanner.line = 1
-	pars.scanner.read()
-	pars.lookahead = pars.scanner.next()
-
+	pars := &Parser{
+		scanner: newScanner(reader),
+	}
+	pars.next()
 	return pars, nil
 }
 
@@ -80,9 +77,11 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	var parameters []string
 	if p.has(xLeftPar) {
 		p.next() // '('
-		parameters, err = p.parseIdentList()
-		if err != nil {
-			return nil, err
+		if p.has(xIdent) {
+			parameters, err = p.parseIdentList()
+			if err != nil {
+				return nil, err
+			}
 		}
 		if _, err := p.match(xRightPar); err != nil {
 			return nil, err
@@ -110,22 +109,22 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 
 func (p *Parser) parseIdentList() ([]string, error) {
 	identifiers := make([]string, 0)
-	if p.has(xIdent) {
-		value, err := p.match(xIdent)
+
+	value, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+	identifiers = append(identifiers, value)
+
+	for p.has(xComma) {
+		p.next() // ','
+		value, err = p.match(xIdent)
 		if err != nil {
 			return nil, err
 		}
 		identifiers = append(identifiers, value)
-
-		for p.has(xComma) {
-			p.next() // ','
-			value, err = p.match(xIdent)
-			if err != nil {
-				return nil, err
-			}
-			identifiers = append(identifiers, value)
-		}
 	}
+
 	return identifiers, nil
 }
 

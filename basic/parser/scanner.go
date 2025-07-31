@@ -38,6 +38,15 @@ type scanner struct {
 	line int    // ընթացիկ տողը
 }
 
+func newScanner(reader *bufio.Reader) *scanner {
+	sc := &scanner{
+		source: reader,
+		line: 1,
+	}
+	sc.read()
+	return sc
+}
+
 // Կարդում և վերադարձնում է հերթական լեքսեմը։
 func (s *scanner) next() *lexeme {
 	// հոսքի ավարտը
