@@ -17,7 +17,7 @@ func TestOne(t *testing.T) {
 
 	tree, _ := pars.Parse()
 	if nil == tree {
-		t.Error("failed to parse the file")
+		t.Fatal("failed to parse the file")
 	}
 
 	if len(tree.Subroutines) != 3 {
