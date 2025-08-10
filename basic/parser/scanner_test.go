@@ -11,7 +11,6 @@ func scannerWithInput(sr string) *scanner {
 	scan := new(scanner)
 	scan.source = bufio.NewReader(strings.NewReader(sr))
 	scan.line = 1
-	scan.read()
 	return scan
 }
 
