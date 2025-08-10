@@ -17,13 +17,9 @@ func runOneFile(filename string) int {
 	}
 	defer file.Close()
 
-	pars, err := parser.New(bufio.NewReader(file))
-	if err != nil {
-		fmt.Println(err)
-		return 2
-	}
+	parser := parser.New(bufio.NewReader(file))
 
-	tree, err := pars.Parse()
+	tree, err := parser.Parse()
 	if err != nil {
 		fmt.Println(err)
 		return 3

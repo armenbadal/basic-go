@@ -13,10 +13,7 @@ func TestOne(t *testing.T) {
 	}
 	defer file.Close()
 
-	pars, err := New(bufio.NewReader(file))
-	if nil != err {
-		t.Error("Failed to create parser")
-	}
+	pars := New(bufio.NewReader(file))
 
 	tree, _ := pars.Parse()
 	if nil == tree {
