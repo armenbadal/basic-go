@@ -8,10 +8,25 @@ import (
 
 // Կառուցում և վերադարձնում է scanner օբյեկտը՝ տրված տեքստի համար
 func scannerWithInput(sr string) *scanner {
-	scan := new(scanner)
-	scan.source = bufio.NewReader(strings.NewReader(sr))
-	scan.line = 1
-	return scan
+	return &scanner{bufio.NewReader(strings.NewReader(sr)), "", 1}
+}
+
+func TestScannerOnlySpaces(t *testing.T) {
+	scan := scannerWithInput("   \t\r\t")
+
+	x := scan.next()
+	if x.token != xEof {
+		t.Fail()
+	}
+}
+
+func TestScannerCommentWithoutNewline(t *testing.T) {
+	scan := scannerWithInput("' comment")
+
+	x := scan.next()
+	if x.token != xEof {
+		t.Fail()
+	}
 }
 
 func TestComments(t *testing.T) {

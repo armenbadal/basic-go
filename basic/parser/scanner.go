@@ -40,15 +40,21 @@ func (s *scanner) next() *lexeme {
 	}
 
 	// բաց թողնել բացատանիշերը
-	if ch == ' ' || ch == '\t' || ch == 'r' {
+	if isSpace(ch) {
 		s.skipWhitespaces()
 		ch = s.read()
+		if ch == 0 {
+			return &lexeme{xEof, "EOF", s.line}
+		}
 	}
 
 	// բաց թողնել մեկնաբանությունները
 	if ch == '\'' {
 		s.skipComments()
 		ch = s.read()
+		if ch == 0 {
+			return &lexeme{xEof, "EOF", s.line}
+		}
 	}
 
 	// իրական թվեր
@@ -128,8 +134,12 @@ func (s *scanner) scan(pred func(rune) bool) {
 	s.unread()
 }
 
+func isSpace(c rune) bool {
+	return c == ' ' || c == '\t' || c == '\r'
+}
+
 func (s *scanner) skipWhitespaces() {
-	s.scan(func(c rune) bool { return c == ' ' || c == '\t' || c == '\r' })
+	s.scan(isSpace)
 }
 
 func (s *scanner) skipComments() {
@@ -141,11 +151,11 @@ func (s *scanner) scanNumber() *lexeme {
 	nuval := s.text
 	if ch := s.read(); ch == '.' {
 		nuval += "."
+		s.scan(unicode.IsDigit)
+		nuval += s.text
 	} else {
 		s.unread()
 	}
-	s.scan(unicode.IsDigit)
-	nuval += s.text
 	return &lexeme{xNumber, nuval, s.line}
 }
 
@@ -185,7 +195,7 @@ var keywords = map[string]int{
 // Եթե կարդացածը keywords ցուցակից է, ապա վերադարձնում է
 // ծառայողական բառի lexeme, հակառակ դեպքում՝ identifier-ի։
 func (s *scanner) scanIdentifierOrKeyword() *lexeme {
-	s.scan(func(c rune) bool { return unicode.IsLetter(c) || unicode.IsDigit(c) })
+	s.scan(isAlphaOrDigit)
 	if ch := s.read(); ch == '$' {
 		s.text += "$"
 	} else {
@@ -198,4 +208,8 @@ func (s *scanner) scanIdentifierOrKeyword() *lexeme {
 	}
 
 	return &lexeme{kw, s.text, s.line}
+}
+
+func isAlphaOrDigit(c rune) bool {
+	return unicode.IsLetter(c) || unicode.IsDigit(c)
 }
