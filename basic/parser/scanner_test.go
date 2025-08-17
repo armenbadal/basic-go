@@ -8,7 +8,11 @@ import (
 
 // Կառուցում և վերադարձնում է scanner օբյեկտը՝ տրված տեքստի համար
 func scannerWithInput(sr string) *scanner {
-	return &scanner{bufio.NewReader(strings.NewReader(sr)), "", 1}
+	return &scanner{
+		bufio.NewReader(strings.NewReader(sr)),
+		-1,
+		"",
+		1}
 }
 
 func TestScannerOnlySpaces(t *testing.T) {
