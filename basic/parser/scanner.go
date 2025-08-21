@@ -183,7 +183,9 @@ var keywords = map[string]int{
 // Եթե կարդացածը keywords ցուցակից է, ապա վերադարձնում է
 // ծառայողական բառի lexeme, հակառակ դեպքում՝ identifier-ի։
 func (s *scanner) scanIdentifierOrKeyword() *lexeme {
-	s.scan(isAlphaOrDigit)
+	s.scan(func(c rune) bool {
+		return unicode.IsLetter(c) || unicode.IsDigit(c)
+	})
 	if s.peek() == '$' {
 		s.text += "$"
 	}
@@ -194,8 +196,4 @@ func (s *scanner) scanIdentifierOrKeyword() *lexeme {
 	}
 
 	return &lexeme{kw, s.text, s.line}
-}
-
-func isAlphaOrDigit(c rune) bool {
-	return unicode.IsLetter(c) || unicode.IsDigit(c)
 }
