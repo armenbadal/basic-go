@@ -8,9 +8,9 @@ import (
 // Բառային վերլուծիչի ստրուկտուրան
 type scanner struct {
 	source *bufio.Reader // կարդալու հոսքը
-
-	text string // կարդացված լեքսեմը
-	line int    // ընթացիկ տողը
+	peeked rune          // կարդացած, բայց դեռ չօգտագործած նիշ
+	text   string        // կարդացված լեքսեմը
+	line   int           // ընթացիկ տողը
 }
 
 // մետասիմվոլներ․ գորողություններ, կետադրություն
@@ -32,138 +32,126 @@ var metasymbols = map[rune]int{
 
 // Կարդում և վերադարձնում է հերթական լեքսեմը։
 func (s *scanner) next() *lexeme {
-	ch := s.read()
-
-	// հոսքի ավարտը
-	if ch == 0 {
-		return &lexeme{xEof, "EOF", s.line}
-	}
-
 	// բաց թողնել բացատանիշերը
-	if isSpace(ch) {
-		s.skipWhitespaces()
-		ch = s.read()
-		if ch == 0 {
-			return &lexeme{xEof, "EOF", s.line}
-		}
+	if isSpace(s.peek()) {
+		s.scan(isSpace)
 	}
 
 	// բաց թողնել մեկնաբանությունները
-	if ch == '\'' {
-		s.skipComments()
-		ch = s.read()
-		if ch == 0 {
-			return &lexeme{xEof, "EOF", s.line}
-		}
+	if s.peek() == '\'' {
+		s.scan(func(c rune) bool { return c != '\n' })
+	}
+
+	// հոսքի ավարտը
+	if s.peek() == eos {
+		return &lexeme{xEof, "EOF", s.line}
 	}
 
 	// իրական թվեր
-	if unicode.IsDigit(ch) {
-		s.unread()
+	if unicode.IsDigit(s.peek()) {
 		return s.scanNumber()
 	}
 
-	// տեքստային լիտերալ
-	if ch == '"' {
-		return s.scanText()
-	}
-
 	// իդենտիֆիկատորներ ու ծառայողական բառեր
-	if unicode.IsLetter(ch) {
-		s.unread()
+	if unicode.IsLetter(s.peek()) {
 		return s.scanIdentifierOrKeyword()
 	}
 
 	// նոր տողի անցման նիշ
-	if ch == '\n' {
-		s.line++
+	if s.peek() == '\n' {
+		s.read()
 		return &lexeme{xNewLine, "<-/", s.line}
 	}
 
+	// տեքստային լիտերալ
+	if s.peek() == '"' {
+		return s.scanText()
+	}
+
 	// գործողություններ և այլ կետադրական ու ղեկավարող նիշեր
-	if ch == '<' {
-		ch = s.read()
-		if ch == '>' {
+	if s.peek() == '<' {
+		s.read()
+		if s.peek() == '>' {
+			s.read()
 			return &lexeme{xNe, "<>", s.line}
 		}
-		if ch == '=' {
+		if s.peek() == '=' {
+			s.read()
 			return &lexeme{xLe, "<=", s.line}
 		}
-		s.unread()
 		return &lexeme{xLt, "<", s.line}
 	}
 
-	if ch == '>' {
-		ch = s.read()
-		if ch == '=' {
+	if s.peek() == '>' {
+		s.read()
+		if s.peek() == '=' {
 			return &lexeme{xGe, ">=", s.line}
 		}
-		s.unread()
 		return &lexeme{xGt, ">", s.line}
 	}
 
-	kind, exists := metasymbols[ch]
+	kind, exists := metasymbols[s.peek()]
 	if !exists {
 		kind = xNone
 	}
-	return &lexeme{kind, string(ch), s.line}
+	return &lexeme{kind, string(s.read()), s.line}
 }
 
-// Ներմուծման հոսքից կարդում է մեկ նիշ և վերագրում է ch դաշտին
 func (s *scanner) read() rune {
-	ch, _, err := s.source.ReadRune()
-	if err != nil {
-		return 0
-	}
+	ch := s.peek()
+	s.peeked = readRune(s.source)
 	return ch
 }
 
-func (s *scanner) unread() {
-	s.source.UnreadRune()
+func (s *scanner) peek() rune {
+	if s.peeked == -1 {
+		s.peeked = readRune(s.source)
+	}
+	return s.peeked
+}
+
+const eos = 0
+
+func readRune(r *bufio.Reader) rune {
+	ch, _, err := r.ReadRune()
+	if err != nil {
+		return eos
+	}
+	return ch
 }
 
 // Ներմուծման հոսքից կարդում է pred պրեդիկատին բավարարող նիշերի
 // անընդհատ հաջորդականություն։ Կարդացածը պահվում է text դաշտում։
 func (s *scanner) scan(pred func(rune) bool) {
 	s.text = ""
-	ch := s.read()
-	for ch != 0 && pred(ch) {
-		s.text += string(ch)
-		ch = s.read()
+	for s.peek() != eos && pred(s.peek()) {
+		s.text += string(s.read())
 	}
-	s.unread()
 }
 
 func isSpace(c rune) bool {
 	return c == ' ' || c == '\t' || c == '\r'
 }
 
-func (s *scanner) skipWhitespaces() {
-	s.scan(isSpace)
-}
-
-func (s *scanner) skipComments() {
-	s.scan(func(c rune) bool { return c != '\n' })
-}
-
 func (s *scanner) scanNumber() *lexeme {
 	s.scan(unicode.IsDigit)
-	nuval := s.text
-	if ch := s.read(); ch == '.' {
-		nuval += "."
+	num := s.text
+	if s.peek() == '.' {
+		s.read()
+		num += "."
 		s.scan(unicode.IsDigit)
-		nuval += s.text
-	} else {
-		s.unread()
+		num += s.text
 	}
-	return &lexeme{xNumber, nuval, s.line}
+	return &lexeme{xNumber, num, s.line}
 }
 
 func (s *scanner) scanText() *lexeme {
+	s.read()
 	s.scan(func(c rune) bool { return c != '"' })
-	if ch := s.read(); ch != '"' {
+	if s.peek() == eos {
 		return &lexeme{xEof, "EOF", s.line}
 	}
+	s.read()
 	return &lexeme{xText, s.text, s.line}
 }
 
@@ -195,11 +183,11 @@ var keywords = map[string]int{
 // Եթե կարդացածը keywords ցուցակից է, ապա վերադարձնում է
 // ծառայողական բառի lexeme, հակառակ դեպքում՝ identifier-ի։
 func (s *scanner) scanIdentifierOrKeyword() *lexeme {
-	s.scan(isAlphaOrDigit)
-	if ch := s.read(); ch == '$' {
+	s.scan(func(c rune) bool {
+		return unicode.IsLetter(c) || unicode.IsDigit(c)
+	})
+	if s.peek() == '$' {
 		s.text += "$"
-	} else {
-		s.unread()
 	}
 
 	kw, ok := keywords[s.text]
@@ -208,8 +196,4 @@ func (s *scanner) scanIdentifierOrKeyword() *lexeme {
 	}
 
 	return &lexeme{kw, s.text, s.line}
-}
-
-func isAlphaOrDigit(c rune) bool {
-	return unicode.IsLetter(c) || unicode.IsDigit(c)
 }

@@ -17,7 +17,7 @@ type Parser struct {
 // New Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
 func New(reader *bufio.Reader) *Parser {
 	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
-	parser := &Parser{&scanner{reader, "", 1}, nil}
+	parser := &Parser{&scanner{reader, -1, "", 1}, nil}
 	parser.next()
 	return parser
 }

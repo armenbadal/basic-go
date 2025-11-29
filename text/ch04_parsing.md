@@ -137,35 +137,46 @@ END␣IF↵
 ```go
 type scanner struct {
 	source *bufio.Reader // կարդալու հոսքը
-
-	ch   rune   // ընթացիկ նիշը
-	text string // կարդացված լեքսեմը
-	line int    // ընթացիկ տողը
+	peeked rune          // կարդացած, բայց դեռ չօգտագործած նիշ
+	text   string        // կարդացված լեքսեմը
+	line   int           // ընթացիկ տողը
 }
 ```
 
-Նոր բառային վերլուծիչը կառուցող `newScanner` ֆունկցիան տրված հոսքը կապում է `source` դաշտին ու կարդում է առաջին նիշը։ 
+Սրա `source`-ը ծրագրի տեքստը պարունակող ֆայլին կապված ընթերցման հոսքն է, որը, եթե խոսենք վերջավոր ավտոմատների տերմիններով, կատարում է _ժապավենի_ դերը։ Այդ «ժապավենից» հերթական նիշը կարդալու համար նախատեսված է `readRune` ֆունկցիան։
 
 ```Go
-func newScanner(reader *bufio.Reader) *scanner {
-	sc := &scanner{
-		source: reader,
-		line: 1,
-	}
-	sc.read()
-	return sc
-}
-```
+const eos = 0
 
-Սրա `source`-ը ծրագրի տեքստը պարունակող ֆայլին կապված ընթերցման հոսքն է, որը, եթե խոսենք վերջավոր ավտոմատների տերմիններով, կատարում է _ժապավենի_ դերը։ Այդ «ժապավենի» հերթական նիշն ընթերցվում է `scanner`-ի `read` մեթոդով։ Վերջինս փորձում է հոսքից կարդալ հերթական նիշն ու վերագրել `ch` դաշտին։ Եթե չի հաջողվում, ապա `ch`-ին վերագրում է `0` արժեքը, դրանով իսկ ազդարարելով հոսքի ավարտված լինելը։
-
-```Go
-func (s *scanner) read() {
-	var err error
-	s.ch, _, err = s.source.ReadRune()
+func readRune(r *bufio.Reader) rune {
+	ch, _, err := r.ReadRune()
 	if err != nil {
-		s.ch = 0
+		return eos
 	}
+	return ch
+}
+```
+
+Սա ընդամենը պարզեցնում է կարդալու գործողությունը՝ հոսքի ավարտի համար վերադարձնելով `eos` հաստատունը։
+
+Ինչպես վերջավոր ավտոմատն է ժապավենի հերթական նիշը դիտարկելով որոշում թե հաջորդը որ վիճակին պետք է անցնի, այնպես էլ մեր բառային վերլուծիչն է `peek()` մեթոդով _դիտարկելու_ հոսքի հերթական նիշը և դրանով էլ որոշելու, թե ինչ պրոցեդուրայով պետք է ճանաչի հերթական սիմվոլը։ 
+
+```Go
+func (s *scanner) peek() rune {
+	if s.peeked == -1 {
+		s.peeked = readRune(s.source)
+	}
+	return s.peeked
+}
+```
+
+Oրինակ, եթե դիտարկվում է թվանշան, ապա պետք է կարդալ թիվ, եթե դիտարկվում է տառ, ապա պետք է կարդալ իդենտիֆիկատոր կամ ծառայողական բառ ու այսպես շարունակ։ Շեշտենք, որ `peek()` մեթոդը չի «օգտագործում» նիշը, այլ միայն դիտարկում է այն։ Հոսքից նիշ կարդալու համար նախատեսված է `read()` մեթոդը։
+
+```Go
+func (s *scanner) read() rune {
+	ch := s.peek()
+	s.peeked = readRune(s.source)
+	return ch
 }
 ```
 
@@ -370,4 +381,73 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 ```
 
+Կարծում եմ, որ արդեն պարզ է, թե ինչպես է վերլուծող ֆունկցիաներում կառուցվում տվյալ քերականական հավասարմանը համապատասխան աբստրակտ քերականական ենթածառը։ Ուրեմն, վերադառնանք ենթածրագրի վերլուծության `parseSubroutine()` մեթոդին ու արդեն գրենք այն լրիվ տեսքով՝ կառուցելով ենթածրագիր AST-ը։ Բայց այս անգամ այն կտրոհենք երկու մասի․ ենթածրագրի վերնագրի վերլուծության `parseSubroutineTitle()` մեթոդի և ենթածրագրի մարմնի վերլուծության `parseSubroutineBody()` մեթոդի։
 
+```go
+func (p *Parser) parseSubroutineTitle() (strint, []string, error) {
+	p.next() // SUB
+	name, err := p.match(xIdent)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// պարամետրեր
+	var parameters []string
+	if p.has(xLeftPar) {
+		p.next() // '('
+		if p.has(xIdent) {
+			parameters, err = p.parseIdentList()
+			if err != nil {
+				return "", nil, err
+			}
+		}
+		if _, err := p.match(xRightPar); err != nil {
+			return "", nil, err
+		}
+	}
+	
+	return name, parameters, nil
+}
+```
+
+```go
+func (p *Parser) parseSubroutineBody() (*ast.Sequence, error) {
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xSubroutine); err != nil {
+		return nil, err
+	}
+	
+	return body, nil
+}
+```
+
+
+
+```go
+func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
+	name, parameters, err := parseSubroutineTitle()
+	if err != nil {
+		return nil, err
+	}
+	
+	body, err := parseSubroutineBody()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Subroutine{
+		Name: name,
+		Parameters: parameters,
+		Body: body,
+	}, nil
+}
+```
+
+Հիմա սկսենք արդեն մեկ առ մեկ իրականացնել Բալ լեզվի բոլոր առանձին հրամանների վերլուծիչները։
