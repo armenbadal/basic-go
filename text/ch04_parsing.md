@@ -381,4 +381,73 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 ```
 
+Կարծում եմ, որ արդեն պարզ է, թե ինչպես է վերլուծող ֆունկցիաներում կառուցվում տվյալ քերականական հավասարմանը համապատասխան աբստրակտ քերականական ենթածառը։ Ուրեմն, վերադառնանք ենթածրագրի վերլուծության `parseSubroutine()` մեթոդին ու արդեն գրենք այն լրիվ տեսքով՝ կառուցելով ենթածրագիր AST-ը։ Բայց այս անգամ այն կտրոհենք երկու մասի․ ենթածրագրի վերնագրի վերլուծության `parseSubroutineTitle()` մեթոդի և ենթածրագրի մարմնի վերլուծության `parseSubroutineBody()` մեթոդի։
 
+```go
+func (p *Parser) parseSubroutineTitle() (strint, []string, error) {
+	p.next() // SUB
+	name, err := p.match(xIdent)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// պարամետրեր
+	var parameters []string
+	if p.has(xLeftPar) {
+		p.next() // '('
+		if p.has(xIdent) {
+			parameters, err = p.parseIdentList()
+			if err != nil {
+				return "", nil, err
+			}
+		}
+		if _, err := p.match(xRightPar); err != nil {
+			return "", nil, err
+		}
+	}
+	
+	return name, parameters, nil
+}
+```
+
+```go
+func (p *Parser) parseSubroutineBody() (*ast.Sequence, error) {
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xSubroutine); err != nil {
+		return nil, err
+	}
+	
+	return body, nil
+}
+```
+
+
+
+```go
+func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
+	name, parameters, err := parseSubroutineTitle()
+	if err != nil {
+		return nil, err
+	}
+	
+	body, err := parseSubroutineBody()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Subroutine{
+		Name: name,
+		Parameters: parameters,
+		Body: body,
+	}, nil
+}
+```
+
+Հիմա սկսենք արդեն մեկ առ մեկ իրականացնել Բալ լեզվի բոլոր առանձին հրամանների վերլուծիչները։
