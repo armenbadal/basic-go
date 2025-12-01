@@ -4,6 +4,7 @@ import (
 	"basic/ast"
 	"bufio"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -434,7 +435,26 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 }
 
 // Արտահայտություն
-//
+
+var operation = map[int]string {
+	xAdd: "+",
+	xSub: "-",
+	xAmp: "&",
+	xMul: "*",
+	xDiv: "/",
+	xMod: "\\",
+	xPow: "^",
+	xEq:  "=",
+	xNe:  "<>",
+	xGt:  ">",
+	xGe:  ">=",
+	xLt:  "<",
+	xLe:  "<=",
+	xAnd: "AND",
+	xOr:  "OR",
+	xNot: "NOT",
+}
+
 // Expression = Conjunction { OR Conjunction }.
 func (p *Parser) parseExpression() (ast.Expression, error) {
 	res, err := p.parseConjunction()
@@ -443,11 +463,11 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 	}
 	for p.has(xOr) {
 		p.next() // OR
-		e0, err := p.parseConjunction()
+		right, err := p.parseConjunction()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "OR", Left: res, Right: e0}
+		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
 	}
 	return res, nil
 }
@@ -462,11 +482,11 @@ func (p *Parser) parseConjunction() (ast.Expression, error) {
 	}
 	for p.has(xAnd) {
 		p.next() // AND
-		e0, err := p.parseEquality()
+		right, err := p.parseEquality()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "AND", Left: res, Right: e0}
+		res = &ast.Binary{Operation: "AND", Left: res, Right: right}
 	}
 	return res, nil
 }
@@ -480,19 +500,13 @@ func (p *Parser) parseEquality() (ast.Expression, error) {
 		return nil, err
 	}
 	if p.has(xEq, xNe) {
-		var opc string
-		switch p.lookahead.token {
-		case xEq:
-			opc = "="
-		case xNe:
-			opc = "<>"
-		}
+		opc := operation[p.lookahead.token]
 		p.next() // '=', '<>'
-		e0, err := p.parseComparison()
+		right, err := p.parseComparison()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
 	return res, nil
 }
@@ -506,23 +520,13 @@ func (p *Parser) parseComparison() (ast.Expression, error) {
 		return nil, err
 	}
 	if p.has(xGt, xGe, xLt, xLe) {
-		var opc string
-		switch p.lookahead.token {
-		case xGt:
-			opc = ">"
-		case xGe:
-			opc = ">="
-		case xLt:
-			opc = "<"
-		case xLe:
-			opc = "<="
-		}
+		opc := operation[p.lookahead.token]
 		p.next() // '>', '>=', '<', '<='
-		e0, err := p.parseAddition()
+		right, err := p.parseAddition()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
 	return res, nil
 }
@@ -536,21 +540,13 @@ func (p *Parser) parseAddition() (ast.Expression, error) {
 		return nil, err
 	}
 	for p.has(xAdd, xSub, xAmp) {
-		var opc string
-		switch p.lookahead.token {
-		case xAdd:
-			opc = "+"
-		case xSub:
-			opc = "-"
-		case xAmp:
-			opc = "&"
-		}
+		opc := operation[p.lookahead.token]
 		p.next() // '+', '-', '&'
-		e0, err := p.parseMultiplication()
+		right, err := p.parseMultiplication()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
 	return res, nil
 }
@@ -564,47 +560,62 @@ func (p *Parser) parseMultiplication() (ast.Expression, error) {
 		return nil, err
 	}
 	for p.has(xMul, xDiv, xMod) {
-		var opc string
-		switch p.lookahead.token {
-		case xMul:
-			opc = "*"
-		case xDiv:
-			opc = "/"
-		case xMod:
-			opc = "\\"
-		}
+		opc := operation[p.lookahead.token]
 		p.next() // '*', '/', '\'
-		e0, err := p.parsePower()
+		right, err := p.parsePower()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: e0}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
 	return res, nil
 }
 
 // Ատիճան բարձրացնելու գործողությունը
 //
-// Power = Index ['^' Power].
+// Power = Unary [ '^' Power ].
 func (p *Parser) parsePower() (ast.Expression, error) {
-	res, err := p.parseSubscript()
+	res, err := p.parseUnary()
 	if err != nil {
 		return nil, err
 	}
 	if p.has(xPow) {
 		p.next() // '^'
-		e0, err := p.parsePower()
+		right, err := p.parsePower()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "^", Left: res, Right: e0}
+		res = &ast.Binary{Operation: "^", Left: res, Right: right}
 	}
 	return res, nil
 }
 
+// Ունար գործողություն
+//
+// Unary = { '-' | 'NOT' } Subscript.
+func (p *Parser) parseUnary() (ast.Expression, error) {
+	var ops []string
+	for p.has(xAdd, xSub, xNot) {
+		opc := operation[p.lookahead.token]
+		p.next() // '+', '-', NOT
+		ops = slices.Insert(ops, 0, opc)
+	}
+
+	right, err := p.parseSubscript()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, opc := range ops {
+		right = &ast.Unary{Operation: opc, Right: right}
+	}
+
+	return right, nil
+}
+
 // Ինդեքսավորման գործողությունը
 //
-// Index = Factor {'[' Expression ']'}.
+// Subscript = Primary { '[' Expression ']' }.
 func (p *Parser) parseSubscript() (ast.Expression, error) {
 	res, err := p.parseFactor()
 	if err != nil {
@@ -612,14 +623,14 @@ func (p *Parser) parseSubscript() (ast.Expression, error) {
 	}
 	for p.has(xLeftBr) {
 		p.next() // '('
-		e0, err := p.parseExpression()
+		right, err := p.parseExpression()
 		if err != nil {
 			return nil, err
 		}
 		if _, err = p.match(xRightBr); err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "[]", Left: res, Right: e0}
+		res = &ast.Binary{Operation: "[]", Left: res, Right: right}
 	}
 	return res, nil
 }
@@ -649,8 +660,6 @@ func (p *Parser) parseFactor() (ast.Expression, error) {
 		result, err = p.parseArrayLiteral()
 	case p.has(xIdent):
 		result, err = p.parseIdentOrApply()
-	case p.has(xSub, xNot):
-		result, err = p.parseUnary()
 	case p.has(xLeftPar):
 		result, err = p.parseGrouping()
 	default:
@@ -740,26 +749,6 @@ func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
 	}
 
 	return &ast.Variable{Name: name}, nil
-}
-
-// ունար գործողություն
-func (p *Parser) parseUnary() (ast.Expression, error) {
-	var opc string
-	switch p.lookahead.token {
-	case xSub:
-		opc = "-"
-	case xNot:
-		opc = "NOT"
-	}
-	p.next() // '-', NOT
-
-	res, err := p.parseFactor()
-	if err != nil {
-		return nil, err
-	}
-
-	res = &ast.Unary{Operation: opc, Right: res}
-	return res, nil
 }
 
 // փակագծեր
