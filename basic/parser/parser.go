@@ -436,7 +436,7 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 
 // Արտահայտություն
 
-var operation = map[int]string {
+var operation = map[int]string{
 	xAdd: "+",
 	xSub: "-",
 	xAmp: "&",
@@ -622,7 +622,7 @@ func (p *Parser) parseSubscript() (ast.Expression, error) {
 		return nil, err
 	}
 	for p.has(xLeftBr) {
-		p.next() // '('
+		p.next() // '['
 		right, err := p.parseExpression()
 		if err != nil {
 			return nil, err
