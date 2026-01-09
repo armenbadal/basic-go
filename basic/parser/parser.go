@@ -195,7 +195,7 @@ func (p *Parser) parseDim() (ast.Statement, error) {
 
 // Վերլուծել վերագրման հրամանը
 //
-// Statement = 'LET' IDENT '=' Expression.
+// Statement = 'LET' IDENT ['[' Expression ']'] '=' Expression.
 func (p *Parser) parseLet() (ast.Statement, error) {
 	p.next() // LET
 	name, err := p.match(xIdent)

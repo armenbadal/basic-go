@@ -330,7 +330,7 @@ NewLines = NEWLINE { NEWLINE }.
 Statement = 'DIM' IDENT '[' Expression ']'
           | 'INPUT' IDENT
           | 'PRINT' Expression
-          | 'LET' IDENT '=' Expression
+          | 'LET' IDENT ['[' Expression ']'] '=' Expression
           | 'IF' Expression 'THEN' Sequence
             { 'ELSEIF' Expression 'THEN' Sequence }
             [ 'ELSE' Sequence ]

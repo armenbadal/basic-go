@@ -433,6 +433,41 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 
 Հիմա սկսենք արդեն մեկ առ մեկ իրականացնել Բալ լեզվի բոլոր առանձին հրամանների վերլուծիչները։
 
+Թող որ առաջինը լինի միչափ զանգված (աում են նաև _վեկտոր_) սահմանող `DIM` հրամանը։ Սրա քերականական կանոնն է․
+
+՝՝՝
+Statement = 'DIM' IDENT '[' Expression ']'.
+՝՝՝
+
+Ուրեմն, պետք է կարդալ `DIM` ծառայողական բառը, ապա զանգվածի անունը որոշող իդենտիֆիկատորը, հետո էլ՝ զանգվածի տարրերի քանակը ցուցյ տվող արտահայտությունը՝ առնված `[` և `]` փակագծերի մեջ։ `parseDim()` մեթոդը վերադարձնում է ADT-ի `Dim` հանգույցի ցուցիչ։ 
+
+```go
+func (p *Parser) parseDim() (ast.Statement, error) {
+	p.next() // DIM
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xLeftBr); err != nil {
+		return nil, err
+	}
+	sz, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xRightBr); err != nil {
+		return nil, err
+	}
+	return &ast.Dim{Name: name, Size: sz}, nil
+}
+```
+
+Վերագրման `LET` հրամանը փոփոխականին կամ զանգվածի տարրին նոր արժեք նշանակող հրամանն է։ Քերականական կանոնը՝
+
+```
+Statement = 'LET' IDENT ['[' Expression ']'] '=' Expression.
+```
+
 
 ### Արտահայտությունների վերլուծությունը
 
