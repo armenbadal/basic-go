@@ -482,7 +482,7 @@ func (i *interpreter) executeFor(f *ast.For) error {
 }
 
 func (i *interpreter) executeCall(c *ast.Call) error {
-	_, err := i.evaluateApply(c)
+	_, err := i.evaluateApply(&ast.Apply{Callee: c.Callee, Arguments: c.Arguments})
 	return err
 }
 

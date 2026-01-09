@@ -40,6 +40,9 @@ func (u *Unary) String() string {
 func (b *Binary) String() string {
 	sl := fmt.Sprint(b.Left)
 	sr := fmt.Sprint(b.Right)
+	if b.Operation == "[]" {
+		return fmt.Sprintf("%s[%s]", sl, sr)
+	}
 	return fmt.Sprintf("(%s %s %s)", sl, b.Operation, sr)
 }
 
@@ -66,6 +69,17 @@ func unindent() {
 
 func (d *Dim) String() string {
 	return fmt.Sprintf("%sDIM %s[%s]", spaces, d.Name, fmt.Sprint(d.Size))
+}
+
+func (c *Call) String() string {
+	var args string
+	for i, e := range c.Arguments {
+		if i != 0 {
+			args += ", "
+		}
+		args += fmt.Sprint(e)
+	}
+	return fmt.Sprintf("%sCALL %s %s", spaces, c.Callee, args)
 }
 
 func (l *Let) String() string {

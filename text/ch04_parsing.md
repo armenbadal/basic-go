@@ -198,7 +198,7 @@ func (s *scanner) read() rune {
 
 ## Շարահյուսական վերլուծություն
 
-Շարահյուսական վերլուծիչը իրականացված է _ռեկուրսիվ վայրէջքի_ (_recursive descent_) եղանակով։ Վերլուծվող լեզվի քերականության ամեն մի կանոնի համար, այսինքն՝ ամեն մի ոչ տերմինալային սիմվոլի համար, սահմանվում է առանձին վերլուծող ֆունկցիա։ Որոշելու համար, թե վերլուծության որևէ քայլում ո՛ր ֆունկցիան պետք է կանչվի, օգտագործվում է _առաջ նայող_ (look-a-head) սիմվոլը։ Օրինակ, վերցնենք քերականության հենց առաջին հավասարումը.
+Շարահյուսական վերլուծիչը իրականացված է _ռեկուրսիվ վայրէջքի_ (_recursive descent_) եղանակով։ Վերլուծվող լեզվի քերականության ամեն մի կանոնի համար, այսինքն՝ ամեն մի ոչ տերմինալային սիմվոլի համար, սահմանվում է առանձին վերլուծող ֆունկցիա։ Որոշելու համար, թե վերլուծության որևէ քայլում ո՛ր ֆունկցիան պետք է կանչվի, օգտագործվում է _առաջ նայող_ (_lookahead_) սիմվոլը։ Օրինակ, վերցնենք քերականության հենց առաջին հավասարումը.
 
 ```
 Program = { Subroutine }.
@@ -236,14 +236,14 @@ func (p *Parser) match(exp int) (string, error) {
 }
 ```
 
-Ինչպես արդեն հասկացանք, look-a-head մեխանիզմը թույլ է տալիս վերլուծել քերականություններ, որտեղ վերլուծության ուղղությունը որոշելու համար բավական է դիտարկել միայն մեկ սիմվոլ։
+Ինչպես արդեն հասկացանք, lookahead մեխանիզմը թույլ է տալիս վերլուծել քերականություններ, որտեղ վերլուծության ուղղությունը որոշելու համար բավական է դիտարկել միայն մեկ սիմվոլ։
 
 `Parser` ստուկտուրան սահմանված է `parser.go` ֆայլում․
 
 ```Go
 type Parser struct {
 	scanner   *scanner // բառային վերլուծիչի ցուցիչ
-	lookahead *lexeme  // look-a-head սիմվոլ
+	lookahead *lexeme  // lookahead սիմվոլ
 }
 ```
 
@@ -381,14 +381,15 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 ```
 
-Կարծում եմ, որ արդեն պարզ է, թե ինչպես է վերլուծող ֆունկցիաներում կառուցվում տվյալ քերականական հավասարմանը համապատասխան աբստրակտ քերականական ենթածառը։ Ուրեմն, վերադառնանք ենթածրագրի վերլուծության `parseSubroutine()` մեթոդին ու արդեն գրենք այն լրիվ տեսքով՝ կառուցելով ենթածրագիր AST-ը։ Բայց այս անգամ այն կտրոհենք երկու մասի․ ենթածրագրի վերնագրի վերլուծության `parseSubroutineTitle()` մեթոդի և ենթածրագրի մարմնի վերլուծության `parseSubroutineBody()` մեթոդի։
+Կարծում եմ, որ արդեն պարզ է, թե ինչպես է վերլուծող ֆունկցիաներում կառուցվում տվյալ քերականական հավասարմանը համապատասխան աբստրակտ քերականական ենթածառը։ Ուրեմն, վերադառնանք ենթածրագրի վերլուծության `parseSubroutine()` մեթոդին ու արդեն գրենք այն լրիվ տեսքով՝ կառուցելով ենթածրագիր AST-ը։ 
 
 ```go
-func (p *Parser) parseSubroutineTitle() (strint, []string, error) {
+func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
+	// վերնագրի վերլուծություն
 	p.next() // SUB
 	name, err := p.match(xIdent)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	// պարամետրեր
@@ -398,20 +399,15 @@ func (p *Parser) parseSubroutineTitle() (strint, []string, error) {
 		if p.has(xIdent) {
 			parameters, err = p.parseIdentList()
 			if err != nil {
-				return "", nil, err
+				return nil, err
 			}
 		}
 		if _, err := p.match(xRightPar); err != nil {
-			return "", nil, err
+			return nil, err
 		}
 	}
-	
-	return name, parameters, nil
-}
-```
 
-```go
-func (p *Parser) parseSubroutineBody() (*ast.Sequence, error) {
+	// մարմնի վերլուծություն
 	body, err := p.parseSequence()
 	if err != nil {
 		return nil, err
@@ -423,31 +419,66 @@ func (p *Parser) parseSubroutineBody() (*ast.Sequence, error) {
 	if _, err := p.match(xSubroutine); err != nil {
 		return nil, err
 	}
-	
-	return body, nil
-}
-```
 
-
-
-```go
-func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
-	name, parameters, err := parseSubroutineTitle()
-	if err != nil {
-		return nil, err
-	}
-	
-	body, err := parseSubroutineBody()
-	if err != nil {
-		return nil, err
-	}
-
+	// նոր ենթածրագրի օբյեկտ
 	return &ast.Subroutine{
-		Name: name,
-		Parameters: parameters,
+		Name: name, 
+		Parameters: parameters, 
 		Body: body,
 	}, nil
 }
 ```
 
+### Հրամանների վերլուծությունը
+
 Հիմա սկսենք արդեն մեկ առ մեկ իրականացնել Բալ լեզվի բոլոր առանձին հրամանների վերլուծիչները։
+
+
+### Արտահայտությունների վերլուծությունը
+
+Արտահայտությունների վերլուծությունը սկսենք դրանցից ամենապարզերից, որոնց քերականության մեջ տվեցինք _Factor_ անունը։ Դրանք տրամաբանական, թվային, տեքստային ու զանգվածների լիտերալներն են, որոնց գալիս են լրացնելու փոփոխականները, ֆունկցիայի կիրառումը և խմբավորման փակագծերը։ Ահա վերին մակարդակի ``parseFactor` մեթոդը, որը, `lookahead`-ի ընթացիկ արժեքով ուղղորդվելով, կանչում է համապատասխան պարզ արտահայտության վերլուծման մեթոդը։
+
+```go
+func (p *Parser) parseFactor() (ast.Expression, error) {
+	switch {
+	case p.has(xTrue, xFalse):
+		return p.parseTrueOrFalse()
+	case p.has(xNumber):
+		return p.parseNumber()
+	case p.has(xText):
+		return p.parseText()
+	case p.has(xLeftBr):
+		return p.parseArrayLiteral()
+	case p.has(xIdent):
+		return p.parseIdentOrApply()
+	case p.has(xLeftPar):
+		return p.parseGrouping()
+	default:
+		return nil, fmt.Errorf("պարզագույն արտահայտության սխալ")
+	}
+}
+```
+
+Տրամանաբանական արժեքների երկու լիտերալները վերլուծվում են `parseTrueOrFalse` մեթոդով, որի արդյունքում կառուցվում է `ast.Boolean` տիպի հանգույց։
+
+```go
+func (p *Parser) parseTrueOrFalse() (ast.Expression, error) {
+	lex, err := p.match(p.lookahead.token)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Boolean{Value: strings.ToUpper(lex) == "TRUE"}, nil
+}
+```
+
+Երբ `lookahead`-ը պիտակված է `xNumber`-ով, ապա գրադարանային `strconv.ParseFloat` ֆունկցիայով լեքսեմը ձևափոխվում է թվային արժեքի, որով էլ արժեքավորվում է վերադարձվող `ast.Number` օբյեկտը։
+
+```go
+func (p *Parser) parseNumber() (ast.Expression, error) {
+	lex := p.lookahead.value
+	p.next() // NUMBER
+	val, _ := strconv.ParseFloat(lex, 64)
+	return &ast.Number{Value: val}, nil
+}
+```

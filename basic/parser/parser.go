@@ -615,7 +615,7 @@ func (p *Parser) parseUnary() (ast.Expression, error) {
 
 // Ինդեքսավորման գործողությունը
 //
-// Subscript = Primary { '[' Expression ']' }.
+// Subscript = Factor { '[' Expression ']' }.
 func (p *Parser) parseSubscript() (ast.Expression, error) {
 	res, err := p.parseFactor()
 	if err != nil {
@@ -637,36 +637,24 @@ func (p *Parser) parseSubscript() (ast.Expression, error) {
 
 // Պարզագույն արտահայտությունների վերլուծությունը
 //
-// Factor = TRUE | FALSE | NUMBER | TEXT
-//
-//	| IDENT
-//	| IDENT '(' [Expression {',' Expression}] ')'
-//	| '[' [Expression {',' Expression}] ']'
-//	| SUB Factor
-//	| NOT Factor
-//	| '(' Expression ')'.
+// Factor = TRUE | FALSE | NUMBER | TEXT | ArrayLiteral | IdentOrApply | Grouping.
 func (p *Parser) parseFactor() (ast.Expression, error) {
-	var result ast.Expression
-	var err error
-
 	switch {
 	case p.has(xTrue, xFalse):
-		result, err = p.parseTrueOrFalse()
+		return p.parseTrueOrFalse()
 	case p.has(xNumber):
-		result, err = p.parseNumber()
+		return p.parseNumber()
 	case p.has(xText):
-		result, err = p.parseText()
+		return p.parseText()
 	case p.has(xLeftBr):
-		result, err = p.parseArrayLiteral()
+		return p.parseArrayLiteral()
 	case p.has(xIdent):
-		result, err = p.parseIdentOrApply()
+		return p.parseIdentOrApply()
 	case p.has(xLeftPar):
-		result, err = p.parseGrouping()
+		return p.parseGrouping()
 	default:
-		err = fmt.Errorf("պարզագույն արտահայտության սխալ")
+		return nil, fmt.Errorf("պարզագույն արտահայտության սխալ")
 	}
-
-	return result, err
 }
 
 // տրամաբանական լիտերալ, TRUE կամ FALSE

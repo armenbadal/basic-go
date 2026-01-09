@@ -24,7 +24,7 @@ func runOneFile(filename string) int {
 		fmt.Println(err)
 		return 3
 	}
-	//println(fmt.Sprint(tree))
+	fmt.Printf("%v", tree)
 
 	err = interpreter.Execute(tree)
 	if err != nil {

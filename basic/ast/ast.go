@@ -60,7 +60,7 @@ type For struct {
 }
 
 // Call Ենթածրագիր կանչ, նույնն է թե Apply
-type Call = Apply
+type Call Apply
 
 // Sequence Հրամանների հաջորդականություն
 type Sequence struct {
