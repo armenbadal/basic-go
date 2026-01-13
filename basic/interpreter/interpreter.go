@@ -359,11 +359,12 @@ func (i *interpreter) executeInput(s *ast.Input) error {
 	line, _ := reader.ReadString('\n')
 	line = strings.Trim(line, " \n\t\r")
 
-	if line == "TRUE" {
+	switch line {
+	case "TRUE":
 		*pl = value{kind: vBoolean, boolean: true}
-	} else if line == "FALSE" {
+	case "FALSE":
 		*pl = value{kind: vBoolean, boolean: false}
-	} else {
+	default:
 		num, err := strconv.ParseFloat(line, 64)
 		if err == nil {
 			*pl = value{kind: vNumber, number: num}
@@ -385,6 +386,9 @@ func (i *interpreter) executePrint(p *ast.Print) error {
 }
 
 func (i *interpreter) executeIf(b *ast.If) error {
+	i.env.openScope()
+	defer i.env.closeScope()
+
 	cond, err := i.evaluate(b.Condition)
 	if err != nil {
 		return err
@@ -411,6 +415,9 @@ func (i *interpreter) executeIf(b *ast.If) error {
 }
 
 func (i *interpreter) executeWhile(w *ast.While) error {
+	i.env.openScope()
+	defer i.env.closeScope()
+
 	for {
 		cond, err := i.evaluate(w.Condition)
 		if err != nil {

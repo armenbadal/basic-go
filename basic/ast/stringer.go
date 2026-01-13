@@ -10,7 +10,7 @@ func (b *Boolean) String() string {
 }
 
 func (n *Number) String() string {
-	return fmt.Sprintf("%f", n.Value)
+	return fmt.Sprintf("%g", n.Value)
 }
 
 func (t *Text) String() string {

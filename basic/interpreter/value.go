@@ -33,7 +33,7 @@ func (v *value) String() string {
 	case vBoolean:
 		res = strings.ToUpper(fmt.Sprint(v.boolean))
 	case vNumber:
-		res = fmt.Sprint(v.number)
+		res = fmt.Sprintf("%g", v.number)
 	case vText:
 		res = v.text
 	case vArray:
@@ -72,9 +72,20 @@ func eq(x, y *value) bool {
 		return x.number == y.number
 	case x.isText() && y.isText():
 		return x.text == y.text
+	case x.isArray() && y.isArray():
+		if len(x.array) != len(y.array) {
+			return false
+		}
+
+		for i, e := range x.array {
+			if !eq(e, y.array[i]) {
+				return false
+			}
+		}
+		return true
 	}
 
-	panic("անհամեմատելի արժեքներ")
+	return false
 }
 
 func lt(x, y *value) bool {

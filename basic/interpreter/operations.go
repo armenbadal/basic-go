@@ -24,6 +24,7 @@ var operations = map[string]binary{
 	"^": func(l, r *value) *value {
 		return &value{kind: vNumber, number: math.Pow(l.number, r.number)}
 	},
+
 	// համեմատումներ
 	"=": func(l, r *value) *value {
 		return &value{kind: vBoolean, boolean: eq(l, r)}
@@ -43,6 +44,7 @@ var operations = map[string]binary{
 	">=": func(l, r *value) *value {
 		return &value{kind: vBoolean, boolean: !lt(l, r)}
 	},
+
 	// տրամաբանական գործողություններ
 	"AND": func(l, r *value) *value {
 		return &value{kind: vBoolean, boolean: l.boolean && r.boolean}

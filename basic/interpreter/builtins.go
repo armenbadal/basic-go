@@ -1,7 +1,6 @@
 package interpreter
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 )
@@ -32,7 +31,7 @@ var builtins = map[string]func(args ...*value) *value{
 
 		ag := args[0]
 		if ag.isNumber() {
-			return &value{kind: vText, text: fmt.Sprintf("%f", ag.number)}
+			return &value{kind: vText, text: ag.String()}
 		}
 
 		return &value{}
