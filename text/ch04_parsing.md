@@ -471,7 +471,35 @@ Statement = 'LET' IDENT ['[' Expression ']'] '=' Expression.
 
 ### Արտահայտությունների վերլուծությունը
 
-Արտահայտությունների վերլուծությունը սկսենք դրանցից ամենապարզերից, որոնց քերականության մեջ տվեցինք _Factor_ անունը։ Դրանք տրամաբանական, թվային, տեքստային ու զանգվածների լիտերալներն են, որոնց գալիս են լրացնելու փոփոխականները, ֆունկցիայի կիրառումը և խմբավորման փակագծերը։ Ահա վերին մակարդակի ``parseFactor` մեթոդը, որը, `lookahead`-ի ընթացիկ արժեքով ուղղորդվելով, կանչում է համապատասխան պարզ արտահայտության վերլուծման մեթոդը։
+Արտահայտություններում երկտեղանի գործողությունների վերլուծիչները շատ նման են միմյանց։ Սկսենք `Expression = Conjunction { 'OR' Conjunction }.` կանոնից։ 
+
+```go
+func (p *Parser) parseExpression() (ast.Expression, error) {
+	res, err := p.parseConjunction()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.has(xOr) {
+		p.next() // OR
+		right, err := p.parseConjunction()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Արտահայտությունների վերլուծությունը սկսենք դրանցից ամենապարզերից, որոնց քերականության մեջ տվեցինք _Factor_ ընդհանուր անունը։ Դրանք տրամաբանական, թվային, տեքստային ու զանգվածների լիտերալներն են, որոնց գալիս են լրացնելու փոփոխականները, ֆունկցիայի կիրառումը և խմբավորման փակագծերը։
+
+՝՝՝
+Factor = TRUE | FALSE | NUMBER | TEXT | ArrayLiteral | IdentOrApply | Grouping.
+՝՝՝
+
+Ահա վերին մակարդակի `parseFactor` մեթոդը, որը, `lookahead`-ի ընթացիկ արժեքով ուղղորդվելով, կանչում է համապատասխան պարզ արտահայտության վերլուծման մեթոդը։
 
 ```go
 func (p *Parser) parseFactor() (ast.Expression, error) {
@@ -517,3 +545,87 @@ func (p *Parser) parseNumber() (ast.Expression, error) {
 	return &ast.Number{Value: val}, nil
 }
 ```
+
+Տեքստային լիտերալը վերլուծող `parseText` մեթոդը պարզապես վերցնում է լեքսեմի արժեքը ու ստեղծում `ast.Text` օբյեկտը։
+
+```go
+func (p *Parser) parseText() (ast.Expression, error) {
+	val := p.lookahead.value
+	p.next() // TEXT
+	return &ast.Text{Value: val}, nil
+}
+```
+
+Զանգվածի լիտերալը `[` և `]` փակագծերի մեջ պարփակված արտահայտությունների ցուցակ է, որի տարրերն իրարից անջատված են ստորակետով։
+
+```
+ArrayLiteral = '[' [ Expression { ',' Expression } ] ']'.
+```
+
+Երբ Factor-ի վերլուծության կետում `lookahead`-ը պիտակված է `xLeftBr`-ով, կանչվում է `parseArrayLiteral` մեթոդը։ Սա բած է թողնում բացվող `[` փակագիծը, ապա կանչում է արտահայտությունների ցուցակը վերլուծող `parseExpressionList` մեթոդը, վերջում էլ սպասում է փակվող `]` փակագծին։ Վերլուծված անդամներով արժեքավորվում է վերադարձվող `ast.Array` օբյեկտը։
+
+```go
+func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
+	p.next() // լիտերալի սկիզբը, '['
+
+	// լիտերալի անդամները
+	elements, err := p.parseExpressionList()
+	if err != nil {
+		return nil, err
+	}
+
+	// լիտերալի վերջը, ']'
+	if _, err := p.match(xRightBr); err != nil {
+		return nil, err
+	}
+
+	return &ast.Array{Elements: elements}, nil
+}
+```
+
+Երբ Factor-ը վերլուծելիս հանդիպել ենք իդենտիֆիակատորի, ապա դա կարող է նշանակել երկու բան․ ա) փոփոխականի օգտագործում, կամ բ) ֆունկցիայի կիրառում։ Առաջին դեպքում իդենտիֆիկատորի լեքսեմով ստեղծվում է `ast.Variable` օբյեկտ, իսկ երկրորդ դեպքում՝ `ast.Apply` օբյեկտ։ Արդ, `parseIdentOrApply` մեթոդը առաջին հերթին կարդում է իդենտիֆիկատորի լեքսեմը, ապա ստուգում է՝ արդյոք հաջորդ նիշը բացվող փակագիծ է։ Եթե այո, ապա կանչում է ֆունկցիայի արգումենտների ցուցակը վերլուծող `parseExpressionList` մեթոդը, և ստեղծում `ast.Apply` օբյեկտ։ Հակառակ դեպքում՝ ստեղծում է `ast.Variable` օբյեկտ։
+
+```go
+func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
+	name := p.lookahead.value
+	p.next() // IDENT
+
+	if p.has(xLeftPar) {
+		p.next() // '('
+
+		arguments, err := p.parseExpressionList()
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := p.match(xRightPar); err != nil { // ')'
+			return nil, err
+		}
+
+		return &ast.Apply{Callee: name, Arguments: arguments}, nil
+	}
+
+	return &ast.Variable{Name: name}, nil
+}
+```
+
+Վերջապես, խմբավորման (կամ հաշվարկման նախապատվության բարձրացման) փակագծերի մեջ առնված արտահայտությունը վերլուծում ենք `parseGrouping` մեթոդով։ Այս մեթոդը նոր հանգույց չի կառուցում, պարզապես վերադարձնում է փակագծերի մեջ վերլուծված արտահայտության համար կառուցված ենթածառը։
+
+```go
+func (p *Parser) parseGrouping() (ast.Expression, error) {
+	p.next() // '('
+
+	expr, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = p.match(xRightPar); err != nil {
+		return nil, err
+	}
+
+	return expr, nil
+}
+```
+
+

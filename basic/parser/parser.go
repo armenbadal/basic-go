@@ -414,24 +414,13 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := make([]ast.Expression, 0)
-	if p.isExprFirst() {
-		e0, err := p.parseExpression()
-		if err != nil {
-			return nil, err
-		}
-		args = append(args, e0)
-		for p.has(xComma) {
-			p.next() // ','
-			e1, err := p.parseExpression()
-			if err != nil {
-				return nil, err
-			}
-			args = append(args, e1)
-		}
+
+	arguments, err := p.parseExpressionList()
+	if err != nil {
+		return nil, err
 	}
 
-	return &ast.Call{Callee: name, Arguments: args}, nil
+	return &ast.Call{Callee: name, Arguments: arguments}, nil
 }
 
 // Արտահայտություն
@@ -461,6 +450,7 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for p.has(xOr) {
 		p.next() // OR
 		right, err := p.parseConjunction()
@@ -470,6 +460,30 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
 	}
 	return res, nil
+}
+
+// ExpressionList = [ Expression { ',' Expression } ].
+func (p *Parser) parseExpressionList() ([]ast.Expression, error) {
+	elements := make([]ast.Expression, 0)
+
+	if p.isExprFirst() {
+		elem, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, elem)
+
+		for p.has(xComma) {
+			p.next() // ','
+			elem, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, elem)
+		}
+	}
+
+	return elements, nil
 }
 
 // Կոնյունկցիա
@@ -592,7 +606,7 @@ func (p *Parser) parsePower() (ast.Expression, error) {
 
 // Ունար գործողություն
 //
-// Unary = { '-' | 'NOT' } Subscript.
+// Unary = { '+' | '-' | 'NOT' } Subscript.
 func (p *Parser) parseUnary() (ast.Expression, error) {
 	var ops []string
 	for p.has(xAdd, xSub, xNot) {
@@ -684,27 +698,20 @@ func (p *Parser) parseText() (ast.Expression, error) {
 
 // զանգվածի լիտերալ
 func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
-	elems := make([]ast.Expression, 0)
-	if _, err := p.match(xLeftBr); err != nil {
-		return nil, err
-	}
-	e, err := p.parseExpression()
+	p.next() // լիտերալի սկիզբը, '['
+
+	// լիտերալի անդամները
+	elements, err := p.parseExpressionList()
 	if err != nil {
 		return nil, err
 	}
-	elems = append(elems, e)
-	for p.has(xComma) {
-		p.next() // ','
-		e, err := p.parseExpression()
-		if err != nil {
-			return nil, err
-		}
-		elems = append(elems, e)
-	}
+
+	// լիտերալի վերջը, ']'
 	if _, err := p.match(xRightBr); err != nil {
 		return nil, err
 	}
-	return &ast.Array{Elements: elems}, nil
+
+	return &ast.Array{Elements: elements}, nil
 }
 
 // իդենտիֆիկատոր կամ ֆունկցիա-ենթածրագրի կանչ
@@ -714,26 +721,17 @@ func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
 
 	if p.has(xLeftPar) {
 		p.next() // '('
-		args := make([]ast.Expression, 0)
-		if p.isExprFirst() {
-			e0, err := p.parseExpression()
-			if err != nil {
-				return nil, err
-			}
-			args = append(args, e0)
-			for p.has(xComma) {
-				p.next() // ','
-				e1, err := p.parseExpression()
-				if err != nil {
-					return nil, err
-				}
-				args = append(args, e1)
-			}
-		}
-		if _, err := p.match(xRightPar); err != nil {
+
+		arguments, err := p.parseExpressionList()
+		if err != nil {
 			return nil, err
 		}
-		return &ast.Apply{Callee: name, Arguments: args}, nil
+
+		if _, err := p.match(xRightPar); err != nil { // ')'
+			return nil, err
+		}
+
+		return &ast.Apply{Callee: name, Arguments: arguments}, nil
 	}
 
 	return &ast.Variable{Name: name}, nil
@@ -743,7 +741,7 @@ func (p *Parser) parseIdentOrApply() (ast.Expression, error) {
 func (p *Parser) parseGrouping() (ast.Expression, error) {
 	p.next() // '('
 
-	res, err := p.parseExpression()
+	expr, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
@@ -752,7 +750,7 @@ func (p *Parser) parseGrouping() (ast.Expression, error) {
 		return nil, err
 	}
 
-	return res, nil
+	return expr, nil
 }
 
 func (p *Parser) has(tokens ...int) bool {
