@@ -13,23 +13,6 @@ type scanner struct {
 	line   int           // ընթացիկ տողը
 }
 
-// մետասիմվոլներ․ գորողություններ, կետադրություն
-var metasymbols = map[rune]int{
-	'+':  xAdd,
-	'-':  xSub,
-	'*':  xMul,
-	'/':  xDiv,
-	'\\': xMod,
-	'^':  xPow,
-	'&':  xAmp,
-	'=':  xEq,
-	'(':  xLeftPar,
-	')':  xRightPar,
-	'[':  xLeftBr,
-	']':  xRightBr,
-	',':  xComma,
-}
-
 // Կարդում և վերադարձնում է հերթական լեքսեմը։
 func (s *scanner) next() *lexeme {
 	// բաց թողնել բացատանիշերը
@@ -57,44 +40,19 @@ func (s *scanner) next() *lexeme {
 		return s.scanIdentifierOrKeyword()
 	}
 
+	// տեքստային լիտերալ
+	if s.peek() == '"' {
+		return s.scanText()
+	}
+
 	// նոր տողի անցման նիշ
 	if s.peek() == '\n' {
 		s.read()
 		return &lexeme{xNewLine, "<-/", s.line}
 	}
 
-	// տեքստային լիտերալ
-	if s.peek() == '"' {
-		return s.scanText()
-	}
-
 	// գործողություններ և այլ կետադրական ու ղեկավարող նիշեր
-	if s.peek() == '<' {
-		s.read()
-		if s.peek() == '>' {
-			s.read()
-			return &lexeme{xNe, "<>", s.line}
-		}
-		if s.peek() == '=' {
-			s.read()
-			return &lexeme{xLe, "<=", s.line}
-		}
-		return &lexeme{xLt, "<", s.line}
-	}
-
-	if s.peek() == '>' {
-		s.read()
-		if s.peek() == '=' {
-			return &lexeme{xGe, ">=", s.line}
-		}
-		return &lexeme{xGt, ">", s.line}
-	}
-
-	kind, exists := metasymbols[s.peek()]
-	if !exists {
-		kind = xNone
-	}
-	return &lexeme{kind, string(s.read()), s.line}
+	return s.scanOperationOrMetasymbol()
 }
 
 func (s *scanner) read() rune {
@@ -196,4 +154,50 @@ func (s *scanner) scanIdentifierOrKeyword() *lexeme {
 	}
 
 	return &lexeme{kw, s.text, s.line}
+}
+
+// մետասիմվոլներ․ գորողություններ, կետադրություն
+var metasymbols = map[rune]int{
+	'+':  xAdd,
+	'-':  xSub,
+	'*':  xMul,
+	'/':  xDiv,
+	'\\': xMod,
+	'^':  xPow,
+	'&':  xAmp,
+	'=':  xEq,
+	'(':  xLeftPar,
+	')':  xRightPar,
+	'[':  xLeftBr,
+	']':  xRightBr,
+	',':  xComma,
+}
+
+func (s *scanner) scanOperationOrMetasymbol() *lexeme {
+	if s.peek() == '<' {
+		s.read()
+		if s.peek() == '>' {
+			s.read()
+			return &lexeme{xNe, "<>", s.line}
+		}
+		if s.peek() == '=' {
+			s.read()
+			return &lexeme{xLe, "<=", s.line}
+		}
+		return &lexeme{xLt, "<", s.line}
+	}
+
+	if s.peek() == '>' {
+		s.read()
+		if s.peek() == '=' {
+			return &lexeme{xGe, ">=", s.line}
+		}
+		return &lexeme{xGt, ">", s.line}
+	}
+
+	kind, exists := metasymbols[s.peek()]
+	if !exists {
+		kind = xNone
+	}
+	return &lexeme{kind, string(s.read()), s.line}
 }
