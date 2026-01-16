@@ -15,16 +15,15 @@ type Parser struct {
 	lookahead *lexeme  // look-a-head սիմվոլ
 }
 
-// New Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
+// Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
 func New(reader *bufio.Reader) *Parser {
 	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
-	parser := &Parser{&scanner{reader, -1, "", 1}, nil}
-	parser.next()
-	return parser
+	return &Parser{&scanner{reader, -1, "", 1}, nil}
 }
 
-// Parse Վերլուծությունը սկսող արտաքին ֆունկցիա
+// Վերլուծությունը սկսող արտաքին ֆունկցիա
 func (p *Parser) Parse() (*ast.Program, error) {
+	p.next()
 	return p.parseProgram()
 }
 
@@ -33,10 +32,11 @@ func (p *Parser) Parse() (*ast.Program, error) {
 // Program = { Subroutine }.
 func (p *Parser) parseProgram() (*ast.Program, error) {
 	// բաց թողնել ֆայլի սկզբի դատարկ տողերը
-	for p.has(xNewLine) {
-		p.next()
+	if p.has(xNewLine) {
+		p.parseNewLines()
 	}
 
+	// վերլուծվելիք ենթածրագրերի ցուցակ
 	subroutines := make(map[string]*ast.Subroutine)
 	for p.has(xSubroutine) {
 		subr, err := p.parseSubroutine()
@@ -101,9 +101,11 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	}
 
 	// նոր ենթածրագրի օբյեկտ
-	subr := &ast.Subroutine{Name: name, Parameters: parameters, Body: body}
-
-	return subr, nil
+	return &ast.Subroutine{
+		Name:       name,
+		Parameters: parameters,
+		Body:       body,
+	}, nil
 }
 
 func (p *Parser) parseIdentList() ([]string, error) {
