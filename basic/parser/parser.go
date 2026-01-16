@@ -108,6 +108,9 @@ func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
 	}, nil
 }
 
+// Իդենտիֆիկատորների ցուցակ
+//
+// IdentList = IDENT { ',' IDENT }.
 func (p *Parser) parseIdentList() ([]string, error) {
 	identifiers := make([]string, 0)
 

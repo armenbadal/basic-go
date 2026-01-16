@@ -615,8 +615,21 @@ func (p *Parser) parseProgram() (*ast.Program, error) {
 }
 ```
 
+Նոր տողերի անցման նիշերի հաջորդության վերլուծությունն էլի իրականացված է `NewLines = NEWLINE { NEWLINE }.` կանոնի ուղղակի ծրագրավորմամբ։
+
+```Go
+func (p *Parser) parseNewLines() {
+	p.match(xNewLine)
+	for p.lookahead.is(xNewLine) {
+		p.next()
+	}
+}
+```
+
 
 ### Ենթածրագրի վերլուծությունը
+
+Ենթածրագրի վերլուծության `passeSubroutine()` մեթոդն էլ մանրամասն կքննարկենք. նախ՝ պարզապես ձևավորված գիտելիքի ամրապնդման համար, և հետո՝ հիմնականում նույն հնարքներն ենք օգտագործելու բոլոր վերլուծիչներում։ ??
 
 Հիշենք քերականական կանոնը.
 
@@ -661,7 +674,57 @@ func (p *Parser) parseSubroutine() {
 }
 ```
 
-Եւս մի անգամ ընդգծենք, որ `parseSubroutine` մեթոդի այս սահմանումը տառացիորեն համապատասխանում է քերականական հավասարմանը։
+Սխեման պարզ է։ Այնուամենայնիվ, ևս մի անգամ ընդգծենք, որ `parseSubroutine` մեթոդի այս սահմանումը տառացիորեն համապատասխանում է քերականական հավասարմանը։
+
+Ուրեմն, վերադառնանք ենթածրագրի վերլուծության `parseSubroutine()` մեթոդին ու արդեն գրենք այն լրիվ տեսքով՝ կառուցելով ենթածրագիր AST-ը։ 
+
+```go
+func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
+	// վերնագրի վերլուծություն
+	p.next() // SUB
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+
+	// պարամետրեր
+	var parameters []string
+	if p.has(xLeftPar) {
+		p.next() // '('
+		if p.has(xIdent) {
+			parameters, err = p.parseIdentList()
+			if err != nil {
+				return nil, err
+			}
+		}
+		if _, err := p.match(xRightPar); err != nil {
+			return nil, err
+		}
+	}
+
+	// մարմնի վերլուծություն
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xSubroutine); err != nil {
+		return nil, err
+	}
+
+	// նոր ենթածրագրի օբյեկտ
+	return &ast.Subroutine{
+		Name: name, 
+		Parameters: parameters, 
+		Body: body,
+	}, nil
+}
+```
+
+Այս ենթածրագրի սկզբում տեսնում ենք `match()`-ի այն կիրառությունը, որտեղ օգտագործվում է ոչ միայն սխալի արժեքը, այլ նաև լեքսեմի արժեքը. `name, err := p.match(xIdent)`։ Սա կարելի է կարդալ այսպես. «եթե ⟨հերթական լեքսեմ⟩-ն ունի `xIdent` պիտակը, ապա `name`-ը թող ստանա այդ լեքսեմի արժեքը, հակառակ դեպքում, `err`-ը թող լինի այդ անհամապատասխանությունն արտացոլող սխալի օբյեկտը»։
 
 Իդենտիֆիկատորների ցուցակը, որտեղ տարրերն իրարից անջատված են ստորակետով, վերլուծվում է `parseIdentList` մեթոդով։ Այս մեթոդը AST հանգույց չի ստեղծում, պարզապես վերադարձնում է վերլուծված իդենտիֆիկատորների զանգվածը։
 
@@ -750,53 +813,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 ```
 
-Կարծում եմ, որ արդեն պարզ է, թե ինչպես է վերլուծող ֆունկցիաներում կառուցվում տվյալ քերականական հավասարմանը համապատասխան աբստրակտ քերականական ենթածառը։ Ուրեմն, վերադառնանք ենթածրագրի վերլուծության `parseSubroutine()` մեթոդին ու արդեն գրենք այն լրիվ տեսքով՝ կառուցելով ենթածրագիր AST-ը։ 
 
-```go
-func (p *Parser) parseSubroutine() (*ast.Subroutine, error) {
-	// վերնագրի վերլուծություն
-	p.next() // SUB
-	name, err := p.match(xIdent)
-	if err != nil {
-		return nil, err
-	}
-
-	// պարամետրեր
-	var parameters []string
-	if p.has(xLeftPar) {
-		p.next() // '('
-		if p.has(xIdent) {
-			parameters, err = p.parseIdentList()
-			if err != nil {
-				return nil, err
-			}
-		}
-		if _, err := p.match(xRightPar); err != nil {
-			return nil, err
-		}
-	}
-
-	// մարմնի վերլուծություն
-	body, err := p.parseSequence()
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := p.match(xEnd); err != nil {
-		return nil, err
-	}
-	if _, err := p.match(xSubroutine); err != nil {
-		return nil, err
-	}
-
-	// նոր ենթածրագրի օբյեկտ
-	return &ast.Subroutine{
-		Name: name, 
-		Parameters: parameters, 
-		Body: body,
-	}, nil
-}
-```
 
 ### Հրամանների վերլուծությունը
 
