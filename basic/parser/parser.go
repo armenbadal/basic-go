@@ -140,7 +140,7 @@ func (p *Parser) parseSequence() (*ast.Sequence, error) {
 
 	statements := make([]ast.Statement, 0)
 	for p.isStatementFirst() {
-		var stat, err = p.parseStatement()
+		stat, err := p.parseStatement()
 		if err != nil {
 			return nil, err
 		}
