@@ -1,0 +1,11 @@
+standalone: true
+toc: true
+number-sections: true
+highlight-style: tango
+
+css:
+  - css/base.css
+  - css/code.css
+  - css/paged.css
+
+template: templates/book.html
