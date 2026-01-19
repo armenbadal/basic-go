@@ -780,16 +780,12 @@ func (p *Parser) parseSequence() (*ast.Sequence, error) {
 
 Հրամանների շարքի վերլուծության `for` ցիկլի պայմանում օգտագործված `isStatementFirst` մեթոդը պարզապես ստուգում է, որ հերթական դիտարկվող թոքենը (lookahead-ը) լինի _FIRST(Statement)_ բազմությունից։ _FIRST(Statement)_-ը այն տերմինալային սիմվոլների բազմությունն է, որի տարրերից որևէ մեկով կարող է հրաման սկսվել։ Բալ լեզվի հրամանների դեպքում.
 
-$$
-FIRST(Statement) \equiv \left\{ DIM, LET, INPUT, PRINT, IF, WHILE, FOR, CALL \right\}
-$$
+_FIRST(Statement) ≡ { DIM, LET, INPUT, PRINT, IF, WHILE, FOR, CALL }_
+
 
 ### Հրամանների վերլուծությունը
 
-Հիմա սկսենք արդեն մեկ առ մեկ իրականացնել Բալ լեզվի բոլոր առանձին հրամանների վերլուծիչները։
-
-
-Մեկ առանձին հրաման վերլուծող `parseStatement` մեթոդը պարզապես ճյուղավորում է վերլուծության ընթացքն ըստ դիտարկվող թոքենի։ Այսպես.
+Նախորդ `parseStatement` մեթոդը՝ կողմնորոշվելով `lookahead`-ի ընթացիկ արժեքով, ճյուղավորում է վերլուծության ընթացքը։ Այսպես.
 
 ```Go
 func (p *Parser) parseStatement() (ast.Statement, error) {
@@ -816,16 +812,13 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 ```
 
-
-
-
-Թող որ առաջինը լինի միչափ զանգված (աում են նաև _վեկտոր_) սահմանող `DIM` հրամանը։ Սրա քերականական կանոնն է․
+Առաջինը միչափ զանգվածը (աում են նաև _վեկտոր_) սահմանող `DIM` հրամանն է։ Սրա քերականական կանոնն է․
 
 ՝՝՝
 Statement = 'DIM' IDENT '[' Expression ']'.
 ՝՝՝
 
-Ուրեմն, պետք է կարդալ `DIM` ծառայողական բառը, ապա զանգվածի անունը որոշող իդենտիֆիկատորը, հետո էլ՝ զանգվածի տարրերի քանակը ցուցյ տվող արտահայտությունը՝ առնված `[` և `]` փակագծերի մեջ։ `parseDim()` մեթոդը վերադարձնում է ADT-ի `Dim` հանգույցի ցուցիչ։ 
+Ուրեմն, պետք է կարդալ `DIM` ծառայողական բառը, ապա զանգվածի անունը որոշող իդենտիֆիկատորը, հետո էլ՝ զանգվածի տարրերի քանակը ցույց տվող արտահայտությունը՝ առնված `[` և `]` փակագծերի մեջ։ `parseDim()` մեթոդը վերադարձնում է `ast.Dim` հանգույցի ցուցիչ։ 
 
 ```go
 func (p *Parser) parseDim() (ast.Statement, error) {
@@ -837,21 +830,145 @@ func (p *Parser) parseDim() (ast.Statement, error) {
 	if _, err := p.match(xLeftBr); err != nil {
 		return nil, err
 	}
-	sz, err := p.parseExpression()
+	size, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 	if _, err := p.match(xRightBr); err != nil {
 		return nil, err
 	}
-	return &ast.Dim{Name: name, Size: sz}, nil
+	return &ast.Dim{Name: name, Size: size}, nil
 }
 ```
 
-Վերագրման `LET` հրամանը փոփոխականին կամ զանգվածի տարրին նոր արժեք նշանակող հրամանն է։ Քերականական կանոնը՝
+Վերագրման `LET` հրամանը փոփոխականին կամ զանգվածի տարրին նոր արժեք նշանակող հրամանն է։ Այս մեթոդում իրականացված է `LET`-ի երկու տարբերակների վերլուծությունը․ սովորական, երբ փոփոխականին է արժեք վերագրվում, և զանգվածի տարրին արժեք նշանակելու դեպքում։
+
+```Go
+func (p *Parser) parseLet() (ast.Statement, error) {
+	p.next() // LET
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+	var place ast.Expression = &ast.Variable{Name: name}
+
+	if p.has(xLeftBr) {
+		p.next() // '['
+		index, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.match(xRightBr); err != nil { // ']'
+			return nil, err
+		}
+		place = &ast.Binary{Operation: "[]", Left: place, Right: index}
+	}
+
+	if _, err := p.match(xEq); err != nil {
+		return nil, err
+	}
+
+	assignable, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Let{Place: place, Value: assignable}, nil
+}
+```
+
+Ներմուծման հրամանը երկու տարր է․ `INPUT` բառը և փոփոխականը, որին պետք է վերագրվի ներմուծված արժեքը։
+
+```Go
+func (p *Parser) parseInput() (ast.Statement, error) {
+	p.next() // INPUT
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Input{Place: &ast.Variable{Name: name}}, nil
+}
+```
+
+Արտածման հրամանը, կարելի է ասել, սիմետրիկ է ներմուծման հրամանին․ այսպեղ `PRINT` բառն է և արտածվող արտահայտությունը։
+
+```Go
+func (p *Parser) parsePrint() (ast.Statement, error) {
+	p.next() // PRINT
+	value, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	return &ast.Print{Value: value}, nil
+}
+```
+
+Ճյուղավորման `IF` հրամանի վերլուծիչը, թերևս, մեր բոլոր վերլուծող ենթածրագրերից ամենաբարդն է (չնայած, ուշադիր կարդալու դեպքում, դրան «բարդ» ասելը մի փոքր չափազանցություն կլինի)։ Հիշենք քերականական կանոնը.
 
 ```
-Statement = 'LET' IDENT ['[' Expression ']'] '=' Expression.
+Statement = 'IF' Expression 'THEN' Sequence
+               { 'ELSEIF' Expression 'THEN' Sequence } 
+			   [ 'ELSE' Sequence ]
+            'END' 'IF'.
+```
+
+Վերլուծող `parseIf()` մեթոդն ունի երեք տրամաբանական մաս։ Նախ վերլուծվում է առաջին, հիմնական պայմանն ու դրան համապատասխան `THEN` բլոկը։
+
+```Go
+func (p *Parser) parseIf() (ast.Statement, error) {
+	p.next() // IF
+	cond, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xThen); err != nil {
+		return nil, err
+	}
+	decision, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+	result := &ast.If{Condition: cond, Decision: decision}
+```
+
+Այնուհետև վերլուծվում են `ELSEIF` ճյուղերն իրենց `THEN` բլոկներով։ Վերջում՝ եթե կա, վերլուծվում է `ELSE` բլոկը։ Իսկ պրոցեդուրայի ամենավերջում հաստատվում է `END IF` զույգը։ 
+
+```Go
+	ipe := res
+	for p.has(xElseIf) {
+		p.next() // ELSEIF
+		c1, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.match(xThen); err != nil {
+			return nil, err
+		}
+		s1, err := p.parseSequence()
+		if err != nil {
+			return nil, err
+		}
+		alt := &ast.If{Condition: c1, Decision: s1}
+		ipe.Alternative = alt
+		ipe = alt
+	}
+	if p.has(xElse) {
+		p.next() // ELSE
+		s2, err := p.parseSequence()
+		if err != nil {
+			return nil, err
+		}
+		ipe.Alternative = s2
+	}
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xIf); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
 ```
 
 

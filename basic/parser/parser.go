@@ -185,17 +185,19 @@ func (p *Parser) parseDim() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if _, err := p.match(xLeftBr); err != nil {
 		return nil, err
 	}
-	sz, err := p.parseExpression()
+	size, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 	if _, err := p.match(xRightBr); err != nil {
 		return nil, err
 	}
-	return &ast.Dim{Name: name, Size: sz}, nil
+
+	return &ast.Dim{Name: name, Size: size}, nil
 }
 
 // Վերլուծել վերագրման հրամանը
@@ -210,7 +212,7 @@ func (p *Parser) parseLet() (ast.Statement, error) {
 	var place ast.Expression = &ast.Variable{Name: name}
 
 	for p.has(xLeftBr) {
-		p.next() // '('
+		p.next() // '['
 		index, err := p.parseExpression()
 		if err != nil {
 			return nil, err
@@ -267,51 +269,55 @@ func (p *Parser) parsePrint() (ast.Statement, error) {
 //	'END' 'IF'.
 func (p *Parser) parseIf() (ast.Statement, error) {
 	p.next() // IF
-	c0, err := p.parseExpression()
+	cond, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 	if _, err := p.match(xThen); err != nil {
 		return nil, err
 	}
-	s0, err := p.parseSequence()
+	decision, err := p.parseSequence()
 	if err != nil {
 		return nil, err
 	}
-	res := &ast.If{Condition: c0, Decision: s0}
-	ipe := res
+	result := &ast.If{Condition: cond, Decision: decision}
+
+	ipe := result
 	for p.has(xElseIf) {
 		p.next() // ELSEIF
-		c1, err := p.parseExpression()
+		cond, err := p.parseExpression()
 		if err != nil {
 			return nil, err
 		}
 		if _, err := p.match(xThen); err != nil {
 			return nil, err
 		}
-		s1, err := p.parseSequence()
+		decision, err := p.parseSequence()
 		if err != nil {
 			return nil, err
 		}
-		alt := &ast.If{Condition: c1, Decision: s1}
-		ipe.Alternative = alt
-		ipe = alt
+		alternative := &ast.If{Condition: cond, Decision: decision}
+		ipe.Alternative = alternative
+		ipe = alternative
 	}
+
 	if p.has(xElse) {
 		p.next() // ELSE
-		s2, err := p.parseSequence()
+		alternative, err := p.parseSequence()
 		if err != nil {
 			return nil, err
 		}
-		ipe.Alternative = s2
+		ipe.Alternative = alternative
 	}
+
 	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
 	if _, err := p.match(xIf); err != nil {
 		return nil, err
 	}
-	return res, nil
+
+	return result, nil
 }
 
 // Նախապայմանով ցիկլի վերլուծությունը
