@@ -814,9 +814,9 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 
 Առաջինը միչափ զանգվածը (աում են նաև _վեկտոր_) սահմանող `DIM` հրամանն է։ Սրա քերականական կանոնն է․
 
-՝՝՝
+```
 Statement = 'DIM' IDENT '[' Expression ']'.
-՝՝՝
+```
 
 Ուրեմն, պետք է կարդալ `DIM` ծառայողական բառը, ապա զանգվածի անունը որոշող իդենտիֆիկատորը, հետո էլ՝ զանգվածի տարրերի քանակը ցույց տվող արտահայտությունը՝ առնված `[` և `]` փակագծերի մեջ։ `parseDim()` մեթոդը վերադարձնում է `ast.Dim` հանգույցի ցուցիչ։ 
 
@@ -932,44 +932,172 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 	result := &ast.If{Condition: cond, Decision: decision}
 ```
 
-Այնուհետև վերլուծվում են `ELSEIF` ճյուղերն իրենց `THEN` բլոկներով։ Վերջում՝ եթե կա, վերլուծվում է `ELSE` բլոկը։ Իսկ պրոցեդուրայի ամենավերջում հաստատվում է `END IF` զույգը։ 
+Այս առաջին հատվածի համար ստեղծվում է `ast.If` հանգույց, որում արժեքվորվում են միայն `Condition` և `Decision` դաշտերը։
+
+Այնուհետև վերլուծվում են `ELSEIF` ճյուղերն իրենց `THEN` բլոկներով։ Այս հատվածի վերլուծությունից ստացված ենթածառը կապվում է նախորդ հատվածում ստեղծված `ast.If` հանգույցի `Alternative` դաշտին։ `ipe` ցուցիչը «սահում» է վերլուծված `ELSEIF` հանգույցների համար ստեղծված `ast.If` օբյեկտների `Alternative` դաշտերով՝ դրանով իսկ ստեղծելով `ast.If` տիպի հանգույցների մի կապակցված ցուցակ։
 
 ```Go
-	ipe := res
+	ipe := result
 	for p.has(xElseIf) {
 		p.next() // ELSEIF
-		c1, err := p.parseExpression()
+		cond, err := p.parseExpression()
 		if err != nil {
 			return nil, err
 		}
 		if _, err := p.match(xThen); err != nil {
 			return nil, err
 		}
-		s1, err := p.parseSequence()
+		decision, err := p.parseSequence()
 		if err != nil {
 			return nil, err
 		}
-		alt := &ast.If{Condition: c1, Decision: s1}
-		ipe.Alternative = alt
-		ipe = alt
+		alternative := &ast.If{Condition: cond, Decision: decision}
+		ipe.Alternative = alternative
+		ipe = alternative
 	}
+}
+```
+
+Վերջում, եթե հանդիպել է `xElse` պիտակը, վերլուծվում է `ELSE` բլոկը, և ստեղծված ենթածառը կապվում է ամենավերջին `ast.If` հանգույցի `Alternative` դաշտին։
+
+```Go
 	if p.has(xElse) {
 		p.next() // ELSE
-		s2, err := p.parseSequence()
+		alternative, err := p.parseSequence()
 		if err != nil {
 			return nil, err
 		}
-		ipe.Alternative = s2
+		ipe.Alternative = alternative
 	}
+```
+
+Ճյուղավորման կառուցվածքի վերլուծությունն ավարտվում է `END` և `IF` ծառայողական բառերի ակնկալիքով։
+
+```Go
 	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
 	if _, err := p.match(xIf); err != nil {
 		return nil, err
 	}
-	return res, nil
+
+	return result, nil
 }
 ```
+
+Նախապայմանով `WHILE` ցիկլը վերլուծող մեթոդը մանրամասն նկարագրության կարիք չունի. պարզապես հաջորդաբար վերլուծվում են քերականական հավասարման աջ մասի անդամները։ Արդյունքում ստեղծվում է `ast.While` տիպի հանգույց։
+
+```Go
+func (p *Parser) parseWhile() (ast.Statement, error) {
+	p.next() // WHILE
+	condition, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xWhile); err != nil {
+		return nil, err
+	}
+
+	return &ast.While{Condition: condition, Body: body}, err
+}
+```
+
+Պարամետրով `FOR` ցիկլի վերլուծությունը, չնայած որ ամենաերկարն է, բայց համարյա գծային է՝ վերլուծվում են իրար հաջորդող քերականական տարրերը։ Հիշենք քերականական հավասարումը.
+
+```
+Statement = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER] Sequence 'END' 'FOR'.
+```
+
+Նախ վերլուծվում է ցիկլի հաշվիչի սկզբնական ու վերջնական արժեքները որոշող կտորը.
+
+```Go
+func (p *Parser) parseFor() (ast.Statement, error) {
+	p.next() // FOR
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+	param := &ast.Variable{Name: name}
+	if _, err := p.match(xEq); err != nil {
+		return nil, err
+	}
+	begin, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xTo); err != nil {
+		return nil, err
+	}
+	end, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+```
+
+Այս կտորի արդյունքում ստանում ենք `name`-ը պարամետրի անունի համար, `begin`-ը՝ պարամետրի սկզբնական արժեքի համար և `end`-ը՝ վերջնական արժեքի համար։
+
+Հետո, եթե հանդիպել է `xStep` պիտակով լեքսեմ, վերլուծում ենք `+` կամ `-` ոչ պարտադի նշանով սկսվող թիվ, որը պետք է ծառայի որպես ցիկլի հաշվիչի արժեքի փոփոխմա արժեք։
+
+```Go
+	var step ast.Expression
+	if p.has(xStep) {
+		p.next() // STEP
+		sign := "+"
+		if p.has(xSub) {
+			p.next() // '-'
+			sign = "-"
+		} else if p.has(xAdd) {
+			p.next() // '+'
+		}
+
+		lex, err := p.match(xNumber)
+		if err != nil {
+			return nil, err
+		}
+		num, _ := strconv.ParseFloat(lex, 64)
+		step = &ast.Number{Value: num}
+		if sign == "-" {
+			step = &ast.Unary{Operation: sign, Right: step}
+		}
+	} else {
+		step = &ast.Number{Value: 1.0}
+	}
+```
+
+
+
+```Go
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xFor); err != nil {
+		return nil, err
+	}
+
+	return &ast.For{
+		Parameter: param,
+		Begin:     begin,
+		End:       end,
+		Step:      step,
+		Body:      body}, nil
+}
+```
+
 
 
 ### Արտահայտությունների վերլուծությունը
@@ -998,9 +1126,9 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 
 Արտահայտությունների վերլուծությունը սկսենք դրանցից ամենապարզերից, որոնց քերականության մեջ տվեցինք _Factor_ ընդհանուր անունը։ Դրանք տրամաբանական, թվային, տեքստային ու զանգվածների լիտերալներն են, որոնց գալիս են լրացնելու փոփոխականները, ֆունկցիայի կիրառումը և խմբավորման փակագծերը։
 
-՝՝՝
+```
 Factor = TRUE | FALSE | NUMBER | TEXT | ArrayLiteral | IdentOrApply | Grouping.
-՝՝՝
+```
 
 Ահա վերին մակարդակի `parseFactor` մեթոդը, որը, `lookahead`-ի ընթացիկ արժեքով ուղղորդվելով, կանչում է համապատասխան պարզ արտահայտության վերլուծման մեթոդը։
 

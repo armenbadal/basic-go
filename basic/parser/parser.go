@@ -262,11 +262,7 @@ func (p *Parser) parsePrint() (ast.Statement, error) {
 
 // Ճյուղավորման հրամանի վերլուծությունը.
 //
-// Statement = 'IF' Expression 'THEN' Sequence
-//
-//	{ 'ELSEIF' Expression 'THEN' Sequence }
-//	[ 'ELSE' Sequence ]
-//	'END' 'IF'.
+// Statement = 'IF' Expression 'THEN' Sequence { 'ELSEIF' Expression 'THEN' Sequence } [ 'ELSE' Sequence ] 'END' 'IF'.
 func (p *Parser) parseIf() (ast.Statement, error) {
 	p.next() // IF
 	cond, err := p.parseExpression()
@@ -325,11 +321,12 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 // Statement = 'WHILE' Expression Sequence 'END' 'WHILE'.
 func (p *Parser) parseWhile() (ast.Statement, error) {
 	p.next() // WHILE
-	c0, err := p.parseExpression()
+	condition, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
-	b0, err := p.parseSequence()
+
+	body, err := p.parseSequence()
 	if err != nil {
 		return nil, err
 	}
@@ -340,15 +337,13 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 	if _, err := p.match(xWhile); err != nil {
 		return nil, err
 	}
-	return &ast.While{Condition: c0, Body: b0}, err
+
+	return &ast.While{Condition: condition, Body: body}, err
 }
 
 // Պարամետրով ցիկլի վերլուծությունը
 //
-// Statement = 'FOR' IDENT '=' Expression 'TO' Expression
-//
-//	['STEP' ['+'|'-'] NUMBER Sequence
-//	'END' 'FOR'.
+// Statement = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER] Sequence 'END' 'FOR'.
 func (p *Parser) parseFor() (ast.Statement, error) {
 	p.next() // FOR
 	name, err := p.match(xIdent)
