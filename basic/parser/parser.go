@@ -460,11 +460,13 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 	for p.has(xOr) {
 		p.next() // OR
 		right, err := p.parseConjunction()
+
 		if err != nil {
 			return nil, err
 		}
 		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
 	}
+
 	return res, nil
 }
 
@@ -500,6 +502,7 @@ func (p *Parser) parseConjunction() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for p.has(xAnd) {
 		p.next() // AND
 		right, err := p.parseEquality()
@@ -508,6 +511,7 @@ func (p *Parser) parseConjunction() (ast.Expression, error) {
 		}
 		res = &ast.Binary{Operation: "AND", Left: res, Right: right}
 	}
+
 	return res, nil
 }
 
@@ -519,6 +523,7 @@ func (p *Parser) parseEquality() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if p.has(xEq, xNe) {
 		opc := operation[p.lookahead.token]
 		p.next() // '=', '<>'
@@ -528,6 +533,7 @@ func (p *Parser) parseEquality() (ast.Expression, error) {
 		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
+
 	return res, nil
 }
 
@@ -539,6 +545,7 @@ func (p *Parser) parseComparison() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if p.has(xGt, xGe, xLt, xLe) {
 		opc := operation[p.lookahead.token]
 		p.next() // '>', '>=', '<', '<='
@@ -548,6 +555,7 @@ func (p *Parser) parseComparison() (ast.Expression, error) {
 		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
+
 	return res, nil
 }
 
@@ -559,6 +567,7 @@ func (p *Parser) parseAddition() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for p.has(xAdd, xSub, xAmp) {
 		opc := operation[p.lookahead.token]
 		p.next() // '+', '-', '&'
@@ -568,6 +577,7 @@ func (p *Parser) parseAddition() (ast.Expression, error) {
 		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
+
 	return res, nil
 }
 
@@ -579,6 +589,7 @@ func (p *Parser) parseMultiplication() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for p.has(xMul, xDiv, xMod) {
 		opc := operation[p.lookahead.token]
 		p.next() // '*', '/', '\'
@@ -588,6 +599,7 @@ func (p *Parser) parseMultiplication() (ast.Expression, error) {
 		}
 		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
+
 	return res, nil
 }
 
@@ -599,6 +611,7 @@ func (p *Parser) parsePower() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if p.has(xPow) {
 		p.next() // '^'
 		right, err := p.parsePower()
@@ -607,6 +620,7 @@ func (p *Parser) parsePower() (ast.Expression, error) {
 		}
 		res = &ast.Binary{Operation: "^", Left: res, Right: right}
 	}
+
 	return res, nil
 }
 

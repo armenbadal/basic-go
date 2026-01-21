@@ -324,35 +324,36 @@ MID("Text", 2, 1)  ' ֆունկցիայի կանչ
 Վերջում մի անգամ էլ, բայց արդեն ամբողջական տեսքը տեսնելու համար, բերենք Բալի քերականությունը․
 
 ```
-Program = { Subroutine }.
-Subroutine = 'SUB' IDENT ['(' [IdentList] ')'] Sequence 'END' 'SUB'.
-IdentList = IDENT {',' IDENT}.
-Sequence = NewLines { Statement NewLines }.
-NewLines = NEWLINE { NEWLINE }.
-Statement = Dim | Let | Input | Print | If | While | For | Call.
-Dim = 'DIM' IDENT '[' Expression ']'.
-Input = 'INPUT' IDENT.
-Print = 'PRINT' Expression.
-Let = 'LET' IDENT ['[' Expression ']'] '=' Expression.
-If = 'IF' Expression 'THEN' Sequence
-     { 'ELSEIF' Expression 'THEN' Sequence }
-     [ 'ELSE' Sequence ]
-     'END' 'IF'.
-While = 'WHILE' Expression Sequence 'END' 'WHILE'.
-For = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER]
-       Sequence 'END' 'FOR'.
-Call = 'CALL' IDENT [Expression {',' Expression}].
-Expression = Conjunction { 'OR' Conjunction }.
-Conjunction = Equality { 'AND' Equality }.
-Equality = Comparison [ ('=' | '<>') Comparison ].
-Comparison = Addition [ ('<' | '<=' | '>' | '>=') Addition ].
-Addition = Multiplication { ('+' | '-' | '&') Multiplication }.
+       Program = { Subroutine }.
+    Subroutine = 'SUB' IDENT ['(' [IdentList] ')'] Sequence 'END' 'SUB'.
+     IdentList = IDENT { ',' IDENT }.
+      Sequence = NewLines { Statement NewLines }.
+      NewLines = NEWLINE { NEWLINE }.
+     Statement = Dim | Let | Input | Print | If | While | For | Call.
+           Dim = 'DIM' IDENT '[' Expression ']'.
+         Input = 'INPUT' IDENT.
+         Print = 'PRINT' Expression.
+           Let = 'LET' IDENT ['[' Expression ']'] '=' Expression.
+            If = 'IF' Expression 'THEN' Sequence
+                 { 'ELSEIF' Expression 'THEN' Sequence }
+                 [ 'ELSE' Sequence ]
+                 'END' 'IF'.
+         While = 'WHILE' Expression Sequence 'END' 'WHILE'.
+           For = 'FOR' IDENT '=' Expression 'TO' Expression
+                 ['STEP' ['+'|'-'] NUMBER] Sequence 'END' 'FOR'.
+          Call = 'CALL' IDENT [Expression {',' Expression}].
+    Expression = Conjunction { 'OR' Conjunction }.
+   Conjunction = Equality { 'AND' Equality }.
+      Equality = Comparison [ ('=' | '<>') Comparison ].
+    Comparison = Addition [ ('<' | '<=' | '>' | '>=') Addition ].
+      Addition = Multiplication { ('+' | '-' | '&') Multiplication }.
 Multiplication = Power { ('*' | '/' | '\') Power }.
-Power = Subscript [ '^' Power ].
-Subscript = Factor { '[' Expression ']' }.
-Factor = 'TRUE' | 'FALSE' | NUMBER | TEXT | IDENT | IDENT '(' [ExpressionList] ')' | ArrayLiteral.
+         Power = Subscript [ '^' Power ].
+     Subscript = Factor { '[' Expression ']' }.
+        Factor = 'TRUE' | 'FALSE' | NUMBER | TEXT | IDENT 
+               | IDENT '(' [ExpressionList] ')' | ArrayLiteral.
 ExpressionList = Expression { ',' Expression }.
-ArrayLiteral = '[' [ ExpressionList ] ']'.
+  ArrayLiteral = '[' [ ExpressionList ] ']'.
 ```
 
 

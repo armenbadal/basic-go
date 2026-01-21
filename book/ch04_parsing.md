@@ -1128,7 +1128,15 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 
 ### Արտահայտությունների վերլուծությունը
 
-Արտահայտություններում երկտեղանի գործողությունների վերլուծիչները շատ նման են միմյանց։ Սկսենք `Expression = Conjunction { 'OR' Conjunction }.` կանոնից։ 
+Լեզվի նկարագրության գլխում խոսեցինք, թե ինչպե՛ս են արտահայտությունները բաժանվված մակարդակների՝ դրանց նախապատվությունը բնականորեն, մաթեմատիկորեն ապահովելու համար։ Վերլուծության մասում այդ հավասարությունները «թարգմանելու» ենք Գո կոդի (ինչպես արեցինք հրամանների՝ ղեկավարող կառուցվածքների համար)։
+
+Սկսենք նախաապատվությունների ամենացածր մակարդակում գտնվող տրամաբանական գործողություններից։ Սրանք երկուսն են. __ԿԱՄ__ ու __ԵՎ__, որոնցից __ԵՎ__-ը, լինելով մուլտիպլիկատիվ գործողություն, ավելի բարձր նախապատվություն ունի քան __ԿԱՄ__-ը։ Ուրեմն, ինչպես և սահմանված է քերականությամբ, դիզյունքցիան `OR` գործողությամբ իրար կապված կոնյունքցիաների շղթա է.
+
+```
+Expression = Conjunction { 'OR' Conjunction }.
+```
+
+Վերլուծիչն էլ, արդեն զարմանալի չէ, ուղղակիորեն արտահայտում է այս հավասարումը. վերլուծել կոնյունքցիա, ապա, քանի դեռ տեսնում ենք `xOr` պիտակը, վերլուծել ևս մի կոնյունքցիա, ու այդ երկուսն իրար կապել `ast.Binary` հանգույցով։
 
 ```go
 func (p *Parser) parseExpression() (ast.Expression, error) {
@@ -1144,6 +1152,150 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 			return nil, err
 		}
 		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Արդյունքում, եթե, օրինակ, վերլուծենք `TRUE OR FALSE OR TRUE` շղթան, ապա կկառուցվի դեպի _ձախ_ աճող ծառ.
+
+![արտահայտության ծառ](expression-trees-left.png)
+
+Լրիվ նույն կաղապարով է կառուցված կոնյունքցիայի վերլուծության `parseConjunction()` մեթոդը, որտեղ կապող գործողությունը `AND`-ն է։
+
+```Go
+func (p *Parser) parseConjunction() (ast.Expression, error) {
+	res, err := p.parseEquality()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.has(xAnd) {
+		p.next() // AND
+		right, err := p.parseEquality()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: "AND", Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Նախապատվությունների աղյուսակի հաջորդ երկու տողերում կանգնած են համեմատման գործողությունները, որոցից `=`-ը և `<>`-ն ունեն ավելի ցածր նախապատվություն, քան `<`, `<=`, `>` և `>`։ Համեմատումները նաև այլ բինար գործողություններից տարբերվում են նրանով, որ դրանցով շղթաներ չեն կազմվում (թեև ոչինչ չի արգելում այդպես անելուն)։ Այդ պատճառով էլ `parseEquality()` և `parseComparison()` մեթոդներում կրկնության փոխարեն օգտագործված է պայմանական `if`-ը։
+
+```Go
+func (p *Parser) parseEquality() (ast.Expression, error) {
+	res, err := p.parseComparison()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.has(xEq, xNe) {
+		opc := operation[p.lookahead.token]
+		p.next() // '=', '<>'
+		right, err := p.parseComparison()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Լրիվ սիմետրիկ իրականացում է `parseComparison()`-ի համար, որտեղ արտահայտություններ կարող են կազմվել մյուս չորս համեմատման գործողություններով։
+
+```Go
+func (p *Parser) parseComparison() (ast.Expression, error) {
+	res, err := p.parseAddition()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.has(xGt, xGe, xLt, xLe) {
+		opc := operation[p.lookahead.token]
+		p.next() // '>', '>=', '<', '<='
+		right, err := p.parseAddition()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Նկատենք, որ մակարդակների այս տրոհումն արգելում է կազմել `a = b <> c = d` տիպի շղթաներ, բայց թույլատրում է գրել `a > b = c <= d` արտահայտությունը, արի համար կստեղծվի այսպիսի մի ծառ.
+
+![համեմատությունների համեմատում](expression-comparison.png)
+
+Թվաբանական գործողությունների ու տողերի միակցման գործողությունները, որոնք հաջորդն են նախապատվությունների աղյուսակում, բոլորն էլ ձախ-զուգորդաական են ու նորից բաժանված են ադիտիվ ու մուլտիպլիկատիվ ենթախմբերի։ `parseAddition()` մեթոդը վերլուծում է ադիտիվների խումբը (`+`, `-`, `&`)։
+
+```Go
+func (p *Parser) parseAddition() (ast.Expression, error) {
+	res, err := p.parseMultiplication()
+	if err != nil {
+		return nil, err
+	}
+
+for p.has(xAdd, xSub, xAmp) {
+		opc := operation[p.lookahead.token]
+		p.next() // '+', '-', '&'
+		right, err := p.parseMultiplication()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
+	}
+
+return res, nil
+}
+```
+
+Իսկ `parseMultication()`-ը վերլուծում է թվաբանական գործողությունների մուլտիպլիկատիվ խումբը։
+
+```Go
+func (p *Parser) parseMultiplication() (ast.Expression, error) {
+	res, err := p.parsePower()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.has(xMul, xDiv, xMod) {
+		opc := operation[p.lookahead.token]
+		p.next() // '*', '/', '\'
+		right, err := p.parsePower()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+////// ---- Շարունակել այստեղից ----
+
+```Go
+func (p *Parser) parsePower() (ast.Expression, error) {
+	res, err := p.parseUnary()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.has(xPow) {
+		p.next() // '^'
+		right, err := p.parsePower()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: "^", Left: res, Right: right}
 	}
 
 	return res, nil
