@@ -51,11 +51,15 @@ NewLines = NEWLINE { NEWLINE }.
 
 Լեզվի հրամանները (կամ ղեկավարող կառուցվածքները) ութն են՝ նախատեսված միաչափ զանգվածների սահմանման, վերագրման, ներմուծման ու արտածման, ճյուղավորման, կրկնությունների և ենթածրագրի կանչի համար։ 
 
+```
+Statement = Dim | Let | Input | Print | If | While | For | Call.
+```
+
 
 __Զանգվածի սահմանում։__ Միաչափ զանգվածները (կամ վեկտորները) սահմանվում են `DIM` հրամանով։ Այն ստանում է զանգվածի անունն ու տարրերի քանակը, որը կարող է լինել ոչ միայն հաստատուն, այլև կատարման ժամանակ հաշվարկվող արտահայտություն՝ թվային արժեքով։
 
 ```
-Statement = 'DIM' IDENT '[' Expression ']'.
+Dim = 'DIM' IDENT '[' Expression ']'.
 ```
 
 Օրինակ, հայտարարենք յոթ տարրերի `arr` զանգվածը։
@@ -76,7 +80,7 @@ PRINT LEN(arr) ' կարտածվի 7
 __Վերագրում։__ Փոփոխականին, կամ զանգվածի տարրին նոր արժեք է վերագրվում `LET` հրամանով․
 
 ```
-Statement = 'LET' IDENT {'[' Expression ']'} '=' Expression.
+Let = 'LET' IDENT {'[' Expression ']'} '=' Expression.
 ```
 
 Օրինակ․
@@ -110,7 +114,7 @@ LET vowels[5] = "ու"
 __Ներմուծում և արտածում։__ Ներմուծման ստանդարտ հոսքից տվյալների ներմուծման համար է նախատեսված `INPUT` հրամանը։ Այն թույլ է տալիս ներմուծել տրամաբանական, թվային ու տեքստային արժեքներ։
 
 ```
-Statement = 'INPUT' IDENT.
+Input = 'INPUT' IDENT.
 ```
 
 > Առայժմ `INPUT` հրամանը «չի կարողանում» ներմուծել զանգվածի տարրերը։ 
@@ -119,7 +123,7 @@ Statement = 'INPUT' IDENT.
 Արտածման ստանդարտ հոսքին տվյալների դուրս բերման համար նախատեսված է `PRINT` հրամանը։ Այն կարողանում է արտածել տրամաբանական, թվային ու տեքստային արժեքները, ինչպես նաև զանգվածները։
 
 ```
-Statement = 'PRINT' Expression.
+Print = 'PRINT' Expression.
 ```
 
 Օրինակ, հետևյալ ծրագիրը պահանջում է ներմուծել երկու թվեր, ապա արտածում է դրանց արտադրյալը։ Բնականաբար, ներմուծված արժեքների թվային լինելը ստուգվում է արտադրյալի հաշվարկման ժամանակ։
@@ -142,10 +146,10 @@ END SUB
 __Ճյուղավորում։__ `IF` կառուցվածով, ինչպես և սպասվում էր, կազմակերպվում են ճյուղավորումները։ Դրա համար գրված քերականական կանոնը սահմանում է, որ `IF` կառուցվածքը կարող է ունենալ մի քանի `ELSEIF`-եր (կամ չունենալ ընդհանրապես), իսկ `ELSE` ճյուղի առկայությունը պարտադիր չէ։
 
 ```
-Statement = 'IF' Expression 'THEN' Sequence
-            { 'ELSEIF' Expression 'THEN' Sequence }
-            [ 'ELSE' Sequence ]
-            'END' 'IF'.
+If = 'IF' Expression 'THEN' Sequence
+     { 'ELSEIF' Expression 'THEN' Sequence }
+     [ 'ELSE' Sequence ]
+     'END' 'IF'.
 ```
 
 `IF`-ի մի կիրառություն արդեն տեսանք ենթածրագրի սահմանմամ մեջ։ Այստեղ բերենք մի ուրիշ օրինակ, որը արեգակնային համակարգի ամեն մի մոլորակի համար արտածում է դրա հին հայկական անունը։
@@ -174,7 +178,7 @@ __Կրկնություն։__ Բալ լեզվում կրկնություններ 
 `WHILE` հրամանի քերականությունը այսպիսինն է․ 
 
 ```
-Statement = 'WHILE' Expression Sequence 'END' 'WHILE'.
+While = 'WHILE' Expression Sequence 'END' 'WHILE'.
 ```
 
 `Sequence` բլոկը կատարվելու է այնքան ժամանակ, քանի դեռ _ճշմարիտ_ է `Expression` արտահայտությունը։ Օրինակ, սահմանենք մի ենթածրագիր, որը հաշվում ու վերադարձնում է տրված դրական ամբողջ թվի թվանշանների քանակը՝ օգտագործելով բաժանման մնացորդը որոշող `\` գործողությունը։
@@ -193,8 +197,8 @@ END SUB
 `FOR` հրամանը սահմանում է նոր փոփոխական՝ _պարամետր_, տալիս է դրան սկզբնական արժեք և կատարում է ցիկլի մարմնի `Sequence` բլոկն այնքան ժամանակ, քանի դեռ պարամետրի արժեքը չի հավասարվել վերջնական արժեքին։ Եթե `STEP`-ը տրված չէ, ապա ամեն մի քայլում պարամետրի արժեքը փոխվում է 1-ով։
 
 ```
-Statement = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER]
-            Sequence 'END' 'FOR'.
+For = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER]
+      Sequence 'END' 'FOR'.
 ```
 
 Օրինակ, հետևյալ ծրագիրը հաշվում ու տպում է 20-ից մինչև 100 միջակայքի զույգ թվերի գումարը։
@@ -213,7 +217,7 @@ END SUB
 __Ենթածրագրի կանչ։__ `CALL` հրամանը կանչում է տրված անունով ենթածրագիրը որպես հրաման, դրան փոխանցելով նշված արգումենտները; Բնականաբար, արգումենտների ցուցակը կարող է դատարկ լինել։ 
 
 ```
-Statement = 'CALL' IDENT [ExpressionList].
+Call = 'CALL' IDENT [ExpressionList].
 ```
 
 Օրինակ, հետևյալ ծրագիրը կանչում է `PrintN` ենթածրագիրը՝ տրված արժեքը տրված քանակով տպելու համար։
@@ -325,18 +329,19 @@ Subroutine = 'SUB' IDENT ['(' [IdentList] ')'] Sequence 'END' 'SUB'.
 IdentList = IDENT {',' IDENT}.
 Sequence = NewLines { Statement NewLines }.
 NewLines = NEWLINE { NEWLINE }.
-Statement = 'DIM' IDENT '[' Expression ']'
-          | 'INPUT' IDENT
-          | 'PRINT' Expression
-          | 'LET' IDENT ['[' Expression ']'] '=' Expression
-          | 'IF' Expression 'THEN' Sequence
-            { 'ELSEIF' Expression 'THEN' Sequence }
-            [ 'ELSE' Sequence ]
-            'END' 'IF'
-          | 'WHILE' Expression Sequence 'END' 'WHILE'
-          | 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER]
-             Sequence 'END' 'FOR'
-          | 'CALL' IDENT [Expression {',' Expression}].
+Statement = Dim | Let | Input | Print | If | While | For | Call.
+Dim = 'DIM' IDENT '[' Expression ']'.
+Input = 'INPUT' IDENT.
+Print = 'PRINT' Expression.
+Let = 'LET' IDENT ['[' Expression ']'] '=' Expression.
+If = 'IF' Expression 'THEN' Sequence
+     { 'ELSEIF' Expression 'THEN' Sequence }
+     [ 'ELSE' Sequence ]
+     'END' 'IF'.
+While = 'WHILE' Expression Sequence 'END' 'WHILE'.
+For = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER]
+       Sequence 'END' 'FOR'.
+Call = 'CALL' IDENT [Expression {',' Expression}].
 Expression = Conjunction { 'OR' Conjunction }.
 Conjunction = Equality { 'AND' Equality }.
 Equality = Comparison [ ('=' | '<>') Comparison ].
