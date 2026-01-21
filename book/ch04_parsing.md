@@ -1074,14 +1074,21 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 	}
 ```
 
+Եթե `STEP` հատվածը բացակայում է, ապա `step`-ին կապում ենք `1.0` արժեքով `ast.Number` հանգույց։
 
+
+Հետո վերլուծում ենք ցիկլի մարմինը կազմող հրամանների հաջորդականությունն ու կապում `body` փոփոխականին։
 
 ```Go
 	body, err := p.parseSequence()
 	if err != nil {
 		return nil, err
 	}
+```
 
+Ամենավերջում համոզվում ենք, որ `FOR` ցիկլի սահմանումն ավարտվում է `END` և `FOR` բառերով ու վերադարձնում ենք `param`, `begin`, `end`, `step` և `body` ենթածառերով արժեքավորված `ast.For` հանգույց։
+
+```Go
 	if _, err := p.match(xEnd); err != nil {
 		return nil, err
 	}
@@ -1095,6 +1102,25 @@ func (p *Parser) parseFor() (ast.Statement, error) {
 		End:       end,
 		Step:      step,
 		Body:      body}, nil
+}
+```
+
+Հրամաններից վերջինը ենթածրագրի կանչի `CALL` հրամանն է։ Լեզվի նկարագրության մեջ արդեն նկարագրեն ենք սրա տեսքն ու վարքը, իսկ վերլուծությունը նորից գծային է. `CALL` բառը, ենթածրագրի անունը և արգումենտների ցուցակը, որը կարող է բացակայել։ `parseCall` մեթոդը կառուցում է `ast.Call` տիպի հանգույց։
+
+```Go
+func (p *Parser) parseCall() (ast.Statement, error) {
+	p.next() // CALL
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+
+	arguments, err := p.parseExpressionList()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Call{Callee: name, Arguments: arguments}, nil
 }
 ```
 
