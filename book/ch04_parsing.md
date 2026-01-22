@@ -629,7 +629,7 @@ func (p *Parser) parseNewLines() {
 
 ### Ենթածրագրի վերլուծությունը
 
-Ենթածրագրի վերլուծության `passeSubroutine()` մեթոդն էլ մանրամասն կքննարկենք. նախ՝ պարզապես ձևավորված գիտելիքի ամրապնդման համար, և հետո՝ հիմնականում նույն հնարքներն ենք օգտագործելու բոլոր վերլուծիչներում։ ??
+Ենթածրագրի վերլուծության `passeSubroutine()` մեթոդն էլ մանրամասն կքննարկենք. նախ՝ պարզապես ձևավորված գիտելիքի ամրապնդման համար, և հետո՝ հիմնականում նույն հնարքներն ենք օգտագործելու բոլոր վերլուծիչներում:
 
 Հիշենք քերականական կանոնը.
 
@@ -1124,6 +1124,17 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 }
 ```
 
+Սրանով ավարտեցինք հրամանների (կամ ղեկավարող կառուցվածքների) վերլուծիչների իրականացումները։ Հաջորդիվ ուսումնասիրելու ենք արտահայտությունների վերլուծությունը, բայց մինչև դրանց անցնելը, նշենք `parseExpressionList()` մեթոդի մասին։ Սա վերլուծում է ստորակետով իրարից անջատված արտահայտությունների ցուցակ ու վերադարձնում է այդ արտահայտությունների ենթածառերի զանգվածը։ 
+
+```Go
+func (p *Parser) parseExpressionList() ([]ast.Expression, error) {
+	elements := make([]ast.Expression, 0)
+	
+	// իրականացման սխեման նույնական է parseIdentList()-ին
+	
+	return elements, nil
+}
+```
 
 
 ### Արտահայտությունների վերլուծությունը
@@ -1138,9 +1149,9 @@ Expression = Conjunction { 'OR' Conjunction }.
 
 Վերլուծիչն էլ, արդեն զարմանալի չէ, ուղղակիորեն արտահայտում է այս հավասարումը. վերլուծել կոնյունքցիա, ապա, քանի դեռ տեսնում ենք `xOr` պիտակը, վերլուծել ևս մի կոնյունքցիա, ու այդ երկուսն իրար կապել `ast.Binary` հանգույցով։
 
-```go
+```Go
 func (p *Parser) parseExpression() (ast.Expression, error) {
-	res, err := p.parseConjunction()
+	result, err := p.parseConjunction()
 	if err != nil {
 		return nil, err
 	}
@@ -1151,10 +1162,10 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
+		result = &ast.Binary{Operation: "OR", Left: result, Right: right}
 	}
 
-	return res, nil
+	return result, nil
 }
 ```
 
@@ -1162,29 +1173,79 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 
 ![արտահայտության ծառ](expression-trees-left.png)
 
-Լրիվ նույն կաղապարով է կառուցված կոնյունքցիայի վերլուծության `parseConjunction()` մեթոդը, որտեղ կապող գործողությունը `AND`-ն է։
+Լրիվ նույն կաղապարով են կառուցված բոլոր ձախ-զուգորդական երկտեղանի գործողությունների վերլուծիչները։ Դուրս բերենք կաղապարը փսևդոկոդի տեսքով.
 
 ```Go
-func (p *Parser) parseConjunction() (ast.Expression, error) {
-	res, err := p.parseEquality()
+func (p *Parser) parseBinary() (*ast.Binary, error) {
+	result, _ := վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+
+    for տեսնում ենք այս մակարդակի գործողություններից որևէ մեկը {
+       op := վերցնել գործողությունը
+       right, _ := վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+       result := result-ից և right-ից կառուցել ast.Binary հանգույց
+	}
+
+    return result, nil
+}
+```
+
+Ասվածն ամրապնդելու համար քննարկենք `parseAddtion()` մեթոդը, որը վերլուծում է թվաբանական ադիտիվ `+` և `-` գործողություններն ու տողերի միակցման `&` գործողությունը։ Նախապատվությունների ցուցակում ադիտիվներից մի մակարդակ բարձ են թվաբանական մուլտիպլիկատիվ `*`, `/` և `\` գործողությունները, որոնց համար, նորից օգտագործելով `parseBinary` սխեման, իրականացված է `parseMultiplication()` մեթոդը։ Ուրեմն.
+
+```Go
+func (p *Parser) parseAddition() (ast.Expression, error) {
+	// վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+	result, err := p.parseMultiplication()
 	if err != nil {
 		return nil, err
 	}
 
-	for p.has(xAnd) {
-		p.next() // AND
-		right, err := p.parseEquality()
+	// քանի դեռ տեսնում ենք այս մակարդակի գործողություններից որևէ մեկը
+	for p.has(xAdd, xSub, xAmp) {
+		// վերցնել գործողությունը
+		opc := operation[p.lookahead.token]
+		p.next() // '+', '-', '&'
+		// վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+		right, err := p.parseMultiplication()
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "AND", Left: res, Right: right}
+		// կառուցել Binary հանգույց
+		result = &ast.Binary{Operation: opc, Left: result, Right: right}
 	}
 
-	return res, nil
+	// վերադարձնել կառուցված ենթածառի արմատը
+	return result, nil
 }
 ```
 
-Նախապատվությունների աղյուսակի հաջորդ երկու տողերում կանգնած են համեմատման գործողությունները, որոցից `=`-ը և `<>`-ն ունեն ավելի ցածր նախապատվություն, քան `<`, `<=`, `>` և `>`։ Համեմատումները նաև այլ բինար գործողություններից տարբերվում են նրանով, որ դրանցով շղթաներ չեն կազմվում (թեև ոչինչ չի արգելում այդպես անելուն)։ Այդ պատճառով էլ `parseEquality()` և `parseComparison()` մեթոդներում կրկնության փոխարեն օգտագործված է պայմանական `if`-ը։
+Այս մեթոդում գործողության պիտակից, օրինակ՝ `xAdd`, գործողության տեքստային ներկայացումը ստանալու համար օգտագործված է `opration` արտապատկերումը՝ սահմանված հետևյալ կերպ.
+
+```Go
+var operation = map[int]string{
+	xAdd: "+",
+	xSub: "-",
+	xAmp: "&",
+	xMul: "*",
+	xDiv: "/",
+	xMod: "\\",
+	xPow: "^",
+	xEq:  "=",
+	xNe:  "<>",
+	xGt:  ">",
+	xGe:  ">=",
+	xLt:  "<",
+	xLe:  "<=",
+	xAnd: "AND",
+	xOr:  "OR",
+	xNot: "NOT",
+}
+```
+
+Առաջ գնալու համար նորից նշենք, որ նույն սխեմայով են կառուցված `parseConjunction()`, `parseMultiplication()` մեթոդները։
+
+Նախապատվությունների աղյուսակում տրամաբանական գործողություններին հաջորդող երկու տողերում կանգնած են համեմատման գործողությունները, որոցից `=`-ը և `<>`-ն ունեն ավելի ցածր նախապատվություն, քան `<`, `<=`, `>` և `>`։ Համեմատումները նաև այլ բինար գործողություններից տարբերվում են նրանով, որ դրանցով շղթաներ չեն կազմվում՝ զուգորդական չեն։ Այդ պատճառով էլ `parseEquality()` և `parseComparison()` մեթոդներում `parseBinary` սխեմայի `for` կրկնության փոխարեն օգտագործված է պայմանական `if`-ը։ 
+
+Այստեղ բերենք միայն `parseEquality()` մեթոդի իրականացումը. `parseComparison()`-ը նույնական է, միայն այն տարբերությամբ, որ ավելի բարձր մակարդակի համար կանչում է `parseAddition()`-ը։
 
 ```Go
 func (p *Parser) parseEquality() (ast.Expression, error) {
@@ -1207,78 +1268,9 @@ func (p *Parser) parseEquality() (ast.Expression, error) {
 }
 ```
 
-Լրիվ սիմետրիկ իրականացում է `parseComparison()`-ի համար, որտեղ արտահայտություններ կարող են կազմվել մյուս չորս համեմատման գործողություններով։
-
-```Go
-func (p *Parser) parseComparison() (ast.Expression, error) {
-	res, err := p.parseAddition()
-	if err != nil {
-		return nil, err
-	}
-
-	if p.has(xGt, xGe, xLt, xLe) {
-		opc := operation[p.lookahead.token]
-		p.next() // '>', '>=', '<', '<='
-		right, err := p.parseAddition()
-		if err != nil {
-			return nil, err
-		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: right}
-	}
-
-	return res, nil
-}
-```
-
-Նկատենք, որ մակարդակների այս տրոհումն արգելում է կազմել `a = b <> c = d` տիպի շղթաներ, բայց թույլատրում է գրել `a > b = c <= d` արտահայտությունը, արի համար կստեղծվի այսպիսի մի ծառ.
+Նկատենք, որ մակարդակների այսպիսի տրոհումն արգելում է կազմել `a = b <> c = d` տիպի շղթաներ. հենց սա է նշանակում «չզուգորդվող», բայց թույլատրում է գրել `a > b = c <= d` արտահայտությունը, որի համար կստեղծվի այսպիսի մի ծառ.
 
 ![համեմատությունների համեմատում](expression-comparison.png)
-
-Թվաբանական գործողությունների ու տողերի միակցման գործողությունները, որոնք հաջորդն են նախապատվությունների աղյուսակում, բոլորն էլ ձախ-զուգորդաական են ու նորից բաժանված են ադիտիվ ու մուլտիպլիկատիվ ենթախմբերի։ `parseAddition()` մեթոդը վերլուծում է ադիտիվների խումբը (`+`, `-`, `&`)։
-
-```Go
-func (p *Parser) parseAddition() (ast.Expression, error) {
-	res, err := p.parseMultiplication()
-	if err != nil {
-		return nil, err
-	}
-
-for p.has(xAdd, xSub, xAmp) {
-		opc := operation[p.lookahead.token]
-		p.next() // '+', '-', '&'
-		right, err := p.parseMultiplication()
-		if err != nil {
-			return nil, err
-		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: right}
-	}
-
-return res, nil
-}
-```
-
-Իսկ `parseMultication()`-ը վերլուծում է թվաբանական գործողությունների մուլտիպլիկատիվ խումբը։
-
-```Go
-func (p *Parser) parseMultiplication() (ast.Expression, error) {
-	res, err := p.parsePower()
-	if err != nil {
-		return nil, err
-	}
-
-	for p.has(xMul, xDiv, xMod) {
-		opc := operation[p.lookahead.token]
-		p.next() // '*', '/', '\'
-		right, err := p.parsePower()
-		if err != nil {
-			return nil, err
-		}
-		res = &ast.Binary{Operation: opc, Left: res, Right: right}
-	}
-
-	return res, nil
-}
-```
 
 Աստիճան բարձրացնելու երկտեղանի գործողությունը մյուսներից տարբերվում է իր աջ-զուգորդականությամբ։ Այսինքն, եթե գրում ենք աստիճանների շղթա `x^y^z`, ապա ակնկալում ենք, որ այն պետք է հաշվարկվի `x^(y^z)` կանոնով։ `parsePower()` մեթոդի իրականացման մեջ դա ստանում ենք `^` գործողության աջ կողմում `parsePower()`-ի ռեկուրսիվ կանչով։
 

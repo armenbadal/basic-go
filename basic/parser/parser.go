@@ -29,7 +29,7 @@ func (p *Parser) Parse() (*ast.Program, error) {
 
 // Վերլուծել ամբողջ ծրագիրը.
 //
-// Program = { Subroutine }.
+// Program = NewLines { Subroutine NewLines }.
 func (p *Parser) parseProgram() (*ast.Program, error) {
 	// բաց թողնել ֆայլի սկզբի դատարկ տողերը
 	if p.has(xNewLine) {
@@ -44,21 +44,28 @@ func (p *Parser) parseProgram() (*ast.Program, error) {
 			return nil, err
 		}
 		subroutines[subr.Name] = subr
-		p.parseNewLines()
+		if err := p.parseNewLines(); err != nil {
+			return nil, err
+		}
 	}
 
-	program := &ast.Program{Subroutines: subroutines}
-	return program, nil
+	return &ast.Program{Subroutines: subroutines}, nil
 }
 
 // Վերլուծել նոր տողերի նիշերի հաջորդականությունը
 //
 // NewLines = NEWLINE { NEWLINE }.
-func (p *Parser) parseNewLines() {
-	p.match(xNewLine)
+func (p *Parser) parseNewLines() error {
+	_, err := p.match(xNewLine)
+	if err != nil {
+		return err
+	}
+
 	for p.lookahead.is(xNewLine) {
 		p.next()
 	}
+
+	return nil
 }
 
 // Վերլուծել ենթածրագիրը
