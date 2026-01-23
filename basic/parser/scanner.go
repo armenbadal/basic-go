@@ -47,6 +47,7 @@ func (s *scanner) next() *lexeme {
 
 	// նոր տողի անցման նիշ
 	if s.peek() == '\n' {
+		s.line++
 		s.read()
 		return &lexeme{xNewLine, "<-/", s.line}
 	}
