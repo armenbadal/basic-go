@@ -2,6 +2,8 @@ package parser
 
 import "slices"
 
+type token int
+
 const (
 	xNone = iota
 
@@ -61,11 +63,11 @@ const (
 )
 
 type lexeme struct {
-	token int    // պիտակ
+	token token  // պիտակ
 	value string // արժեք
 	line  int    // տողը
 }
 
-func (l *lexeme) is(exps ...int) bool {
+func (l *lexeme) is(exps ...token) bool {
 	return slices.Contains(exps, l.token)
 }

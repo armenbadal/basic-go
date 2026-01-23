@@ -438,7 +438,7 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 
 // Արտահայտություն
 
-var operation = map[int]string{
+var operation = map[token]string{
 	xAdd: "+",
 	xSub: "-",
 	xAmp: "&",
@@ -780,7 +780,7 @@ func (p *Parser) parseGrouping() (ast.Expression, error) {
 	return expr, nil
 }
 
-func (p *Parser) has(tokens ...int) bool {
+func (p *Parser) has(tokens ...token) bool {
 	return p.lookahead.is(tokens...)
 }
 
@@ -794,12 +794,12 @@ func (p *Parser) isExprFirst() bool {
 
 func (p *Parser) next() { p.lookahead = p.scanner.next() }
 
-func (p *Parser) match(exp int) (string, error) {
+func (p *Parser) match(exp token) (string, error) {
 	if p.lookahead.is(exp) {
 		value := p.lookahead.value
 		p.next()
 		return value, nil
 	}
 
-	return "", fmt.Errorf("տող %d. Վերլուծության սխալ", p.lookahead.line)
+	return "", fmt.Errorf("տող %d. Վերլուծության սխալ. սպասվում է %v, բայց հանդիպել է %v", p.lookahead.line, exp, p.lookahead.token)
 }
