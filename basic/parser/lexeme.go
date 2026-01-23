@@ -4,8 +4,9 @@ import "slices"
 
 type token int
 
+//go:generate stringer -type=token -linecomment -output=token_string.go
 const (
-	xNone = iota
+	xNone token = iota
 
 	// լիտերալներ
 	xNumber // թիվ
