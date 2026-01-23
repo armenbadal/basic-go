@@ -9,16 +9,22 @@ import (
 	"strings"
 )
 
-// Parser Շարահյուսական վերլուծիչի ստրուկտուրան։
+// Շարահյուսական վերլուծիչի ստրուկտուրան
 type Parser struct {
 	scanner   *scanner // բառային վերլուծիչի ցուցիչ
 	lookahead *lexeme  // look-a-head սիմվոլ
+	errors    []error  // վերլուծության սխալների ցուցակ
+	panicMode bool     // սխալի վերականգնման ռեժիմի դրոշակ
 }
 
-// Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
+// Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ
 func New(reader *bufio.Reader) *Parser {
-	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
-	return &Parser{&scanner{reader, -1, "", 1}, nil}
+	return &Parser{
+		&scanner{reader, -1, "", 1},
+		nil,
+		make([]error, 0),
+		false,
+	}
 }
 
 // Վերլուծությունը սկսող արտաքին ֆունկցիա
@@ -794,12 +800,53 @@ func (p *Parser) isExprFirst() bool {
 
 func (p *Parser) next() { p.lookahead = p.scanner.next() }
 
-func (p *Parser) match(exp token) (string, error) {
-	if p.lookahead.is(exp) {
+func (p *Parser) match(expected token) (string, error) {
+	if p.lookahead.is(expected) {
 		value := p.lookahead.value
 		p.next()
+		// հաջող համընկնում, վերականգնել սխալի ռեժիմը
+		p.panicMode = false
 		return value, nil
 	}
 
-	return "", fmt.Errorf("տող %d. Վերլուծության սխալ. սպասվում է %v, բայց հանդիպել է %v", p.lookahead.line, exp, p.lookahead.token)
+	// սխալ համընկնում
+	err := fmt.Errorf("Տող %d: սպասվում է %v, բայց հանդիպել է '%s'",
+		p.lookahead.line, expected, p.lookahead.value)
+
+	// եթե չենք գտնվում սխալի վերականգնման ռեժիմում, գրանցել սխալը
+	if !p.panicMode {
+		p.errors = append(p.errors, err)
+		p.panicMode = true
+	}
+
+	return "", err
+}
+
+func (p *Parser) synchronize() {
+	// նշել, որ մենք գտնվում ենք սխալի վերականգնման ռեժիմում
+	p.panicMode = true
+
+	// կլանել ընթացիկ սիմվոլը
+	p.next()
+
+	// շարունակել մինչև ֆայլի վերջը կամ մինչև հնարավոր նոր սկիզբ
+	for !p.lookahead.is(xEof) {
+		// եթե հասել ենք նոր տողի նիշին, ապա հավանաբար հասել ենք սխալ հրամանի վերջին
+		if p.has(xNewLine) {
+			// դեն ենք նետում բոլոր հաջորդող նոր տողերը
+			p.parseNewLines()
+			if p.isStatementFirst() || p.has(xSubroutine, xEnd) {
+				p.panicMode = false
+				return
+			}
+		}
+
+		// եթե հանդիպել ենք հրաման կամ ենթածրագիր սկսող ծառայողական բառի, ապա այս կետը համարում ենք սխալի վերականգնման կետ
+		if p.isStatementFirst() || p.has(xSubroutine, xEnd, xElse, xElseIf) {
+			p.panicMode = false
+			return
+		}
+
+		p.next()
+	}
 }
