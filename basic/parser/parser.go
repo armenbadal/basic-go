@@ -9,15 +9,14 @@ import (
 	"strings"
 )
 
-// Parser Շարահյուսական վերլուծիչի ստրուկտուրան։
+// Շարահյուսական վերլուծիչի ստրուկտուրան
 type Parser struct {
 	scanner   *scanner // բառային վերլուծիչի ցուցիչ
 	lookahead *lexeme  // look-a-head սիմվոլ
 }
 
-// Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ։
+// Ստեղծում և վերադարձնում է շարահյուսական վերլուծիչի նոր օբյեկտ
 func New(reader *bufio.Reader) *Parser {
-	// ստեղծել շարահյուսական վերլուծիչի օբյեկտը
 	return &Parser{&scanner{reader, -1, "", 1}, nil}
 }
 
@@ -438,7 +437,7 @@ func (p *Parser) parseCall() (ast.Statement, error) {
 
 // Արտահայտություն
 
-var operation = map[int]string{
+var operation = map[token]string{
 	xAdd: "+",
 	xSub: "-",
 	xAmp: "&",
@@ -780,7 +779,7 @@ func (p *Parser) parseGrouping() (ast.Expression, error) {
 	return expr, nil
 }
 
-func (p *Parser) has(tokens ...int) bool {
+func (p *Parser) has(tokens ...token) bool {
 	return p.lookahead.is(tokens...)
 }
 
@@ -794,12 +793,13 @@ func (p *Parser) isExprFirst() bool {
 
 func (p *Parser) next() { p.lookahead = p.scanner.next() }
 
-func (p *Parser) match(exp int) (string, error) {
-	if p.lookahead.is(exp) {
+func (p *Parser) match(expected token) (string, error) {
+	if p.lookahead.is(expected) {
 		value := p.lookahead.value
 		p.next()
 		return value, nil
 	}
 
-	return "", fmt.Errorf("տող %d. Վերլուծության սխալ", p.lookahead.line)
+	return "", fmt.Errorf("Տող %d: սպասվում է %v, բայց հանդիպել է '%s':",
+		p.lookahead.line, expected, p.lookahead.value)
 }
