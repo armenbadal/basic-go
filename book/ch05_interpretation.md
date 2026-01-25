@@ -21,6 +21,62 @@ type interpreter struct {
 
 Ինտերպրետացնող մեթոդները բաժանված են երկու խմբի. _կատարողներ_ և _հաշվարկողներ_։ Կատարողները լեզվի հրամանների համար են ու միշտ սկսվում են `execute` բառով, օրինակ, `executeDim`։ Սրանք վերադարձնում են միայն `error` արժեք։ Հաշվարկողները արտահայտությունների համար են ու սկսվում են `evaluate` բառով, օրինակ, `evaluateVaraible`։ Սրանք վերադարձնում են `*value` և `error`. հաշվարկման արժեքն ու սխալը։
 
+Քանի որ AST ստրուկտուրաներում հրամանները ներկայացված են `ast.Statement` ինտերֆեյսով, `interprete` ստրուկտուրայի համար սահմանել ենք ճյուղավորող (dispatcher) մեթոդ՝ `execute()` անունով։
+
+```Go
+func (i *interpreter) execute(n ast.Statement) error {
+	switch s := n.(type) {
+	case *ast.Dim:
+		return i.executeDim(s)
+	case *ast.Let:
+		return i.executeLet(s)
+	case *ast.Input:
+		return i.executeInput(s)
+	case *ast.Print:
+		return i.executePrint(s)
+	case *ast.If:
+		return i.executeIf(s)
+	case *ast.While:
+		return i.executeWhile(s)
+	case *ast.For:
+		return i.executeFor(s)
+	case *ast.Call:
+		return i.executeCall(s)
+	case *ast.Sequence:
+		return i.executeSequence(s)
+	}
+
+	return nil
+}
+```
+
+Ճիշտ նույն եղանակով արտահայտությունների համար սահմանված է `evaluate()` ճյուղավորող մեթոդը։ Սա, ըստ `ast.Expression` ինտերֆեյով ներկայացող փոփոխականի հետ կապված օբյեկտի իրական տիպի, որոշում է կայացնում, թե որ հաշվարկող մեթոդը պետք է կիրառել։
+
+```Go
+func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
+	switch e := n.(type) {
+	case *ast.Boolean:
+		return i.evaluateBoolean(e)
+	case *ast.Number:
+		return i.evaluateNumber(e)
+	case *ast.Text:
+		return i.evaluateText(e)
+	case *ast.Array:
+		return i.evaluateArray(e)
+	case *ast.Variable:
+		return i.evaluateVariable(e)
+	case *ast.Unary:
+		return i.evaluateUnary(e)
+	case *ast.Binary:
+		return i.evaluateBinary(e)
+	case *ast.Apply:
+		return i.evaluateApply(e)
+	}
+
+	return nil, nil
+}
+```
+
 
 ## Կատարման միջավայր
 
@@ -275,6 +331,152 @@ func Execute(p *ast.Program) error {
 }
 ```
 
+Նորից նշենք, որ `Execute()`-ը `interpreter` փաթեթի միակ արտաքին, ինտերֆեյասային ֆունկցիան է. սրան ենք փոխանցում ծրագրի ծառային ներկայացումը և սրա աշխատանքի արդյունքում սպասում ենք կա՛մ հաջող կատարում, կա՛մ կատարման ժամանակի սխալը ներկայացնող  `error` օբյեկտ։
+
+
+## Արտահայտությունների հաշվարկը
+
+Սկսենք `interpreter` ստրուկտուրայի ամենապարզ մեթոդներից։ Դրանք, բնականաբար, նրանք են, որոնք նախատեսված են վերլուծության ծառի տերևների համար։ Իսկ տերևներ են դառնում լիտերալներն ու փոփոխականները։
+
+Բուլյան, թվային ու տեքստային լիտերալների հանգույցների հաշվարկը նույնական է. պարզապես ստեղծվում է նույն արժեքով `value` օբյեկտ։
+
+```Go
+func (i *interpreter) evaluateBoolean(b *ast.Boolean) (*value, error) {
+	return &value{kind: vBoolean, boolean: b.Value}, nil
+}
+
+func (i *interpreter) evaluateNumber(n *ast.Number) (*value, error) {
+	return &value{kind: vNumber, number: n.Value}, nil
+}
+
+func (i *interpreter) evaluateText(t *ast.Text) (*value, error) {
+	return &value{kind: vText, text: t.Value}, nil
+}
+```
+
+Զանգվածի լիտերալի հաշվարկման դեպքում պետք է նաև հաշվարկել դրանում մասնակցող տարրերը.
+
+```Go
+func (i *interpreter) evaluateArray(a *ast.Array) (*value, error) {
+	els := len(a.Elements)
+	res := &value{kind: vArray, array: make([]*value, els)}
+	for j, e := range a.Elements {
+		val, err := i.evaluate(e)
+		if err != nil {
+			return nil, err
+		}
+		res.array[j] = val
+	}
+	return res, nil
+}
+```
+
+Փոփոխականի արժեքը պետք է վերցնել կատարման միջավայրից։ Բայց ի՞նչ անել, եթե դիտարկվող անունը բացակայում է այնտեղ։ Օրինակ, ինչպիսի՞ն պետք է լինի հետևյալ ծրագրի վարքը.
+
+```Basic
+SUB Main
+   PRINT y
+END SUB
+```
+
+Կարող է լինել երկու մոտեցում. ա) կատարման սխալ, ինտերպրետացիան պետք է դադարեցնել, բ) վերադաձնել ինչ-որ արժեքով `value` օբյեկտ, որի օգտագործումը, սակայն, մի այլ կետում է հանգեցնելու սխալի։ Մենք ընտրել ենք անմիջապես սխալի մասին հայտարարման տարբերակը։
+
+```Go
+func (i *interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
+	if vp := i.env.get(v.Name); vp != nil {
+		return vp, nil
+	}
+
+	return nil, fmt.Errorf("անհայտ փոփոխական՝ %s", v.Name)
+}
+```
+
+Միտեղնի գործողություններով արտահայտությունների համար է `evaluateUnary()` մեթոդը։ Սա նախ հաշվում է ենթաարտահայտությունը.
+
+```Go
+func (i *interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
+	result, err := i.evaluate(u.Right)
+	if err != nil {
+		return nil, err
+	}
+```
+
+Հետո դիտարկվում են թույլատրելի գործողությունները։ Դրանք այս դեպքում երկուսն են. ունար մինուս և տրամաբանական ժխտում։ Առաջինի դեպքում ստուգվում է, որ նախորդ քայլում հաշվարկված արժեքը թվային լինի։ Երկրորդի դեպքում՝ պետք է բուլյան լինի։ Եթե տիպերի ստուգումը հաջողվում է, ապա `result`-ի արժեքը փոխվում է ըստ օպերատորի ու վերադարձվում է որպես արդյունք։
+
+```Go
+	switch u.Operation {
+	case "-":
+		if !result.isNumber() {
+			return nil, fmt.Errorf("- գործողության արգումենտը պետք է թիվ լինի")
+		}
+
+		result.number *= -1
+	case "NOT":
+		if !result.isBoolean() {
+			return nil, fmt.Errorf("NOT գործողության արգումենտը պետք է տրամաբանական արժեք լինի")
+		}
+
+		result.boolean = !result.boolean
+	}
+
+	return result, nil
+}
+```
+
+Երկտեղանի գործողությունները շատ են ու բազմազան։ Դրա համար էլ `evaluateBinary()` մեթոդը այստեղ ապահովում է ըստ գործողությունների խմբերի ճյուղավորումը. թվաբանական, տեքստերի միակցման, տրամաբանական, համեմատման ու զանգվածի ինդեքսավորման։
+
+```Go
+func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
+	switch b.Operation {
+	case "+", "-", "*", "/", "\\", "^":
+		return i.evaluateArithmetic(b)
+	case "&":
+		return i.evaluateTextConcatenation(b)
+	case "AND", "OR":
+		return i.evaluateLogic(b)
+	case "[]":
+		return i.evaluateIndexing(b)
+	case "=", "<>", ">", ">=", "<", "<=":
+		return i.evaluateComparison(b)
+	}
+
+	return nil, fmt.Errorf("անծանոթ երկտեղանի գործողություն")
+}
+```
+
+Բոլոր այդ երկտեղանի գործողությունների վարքը ծրագրավորված է `operations` աղյուսակում (տե՛ս `operations.go` ֆայլը)։ Սա գործողության անունին համապատասխանեցնում է դրա հաշվարկող անանուն ֆունկցիան։
+
+```Go
+type binary func(l, r *value) *value
+
+var operations = map[string]binary{
+	// երկտեղանի գործողությունները հաշվարկող ֆունկցաիները
+}
+```
+
+Ամբողջ աղյուսակն այստեղ չպատճենելու համար բերենք միայն `+`, `=` և `AND` գործողությունների օրինակները։
+
+```Go
+	// ...
+	"+": func(l, r *value) *value {
+		return &value{kind: vNumber, number: l.number + r.number}
+	},
+	"=": func(l, r *value) *value {
+		return &value{kind: vBoolean, boolean: eq(l, r)}
+	},
+	"AND": func(l, r *value) *value {
+		return &value{kind: vBoolean, boolean: l.boolean && r.boolean}
+	},
+	// ...
+```
+
+`evaluateBinary()` մեթոդում հիշատակված `evaluateArithmetic()`, `evaluateTextConcatenation()`, `evaluateLogic()`, `evaluateIndexing` և `evaluateComparison` մեթոդներն էլ են կառուցված միևնույն սխեմայով։ Դրանք տարբերվում են միայն տիպերի ստուգման կտորներով։ 
+
+Նորից, տեքստը միօրինակությամբ չծանրաբեռնելու համար, այստեղ կցուցադրենք միայն `evaluateArithmetic()` և `evaluateIndexing()` մեթոդները։
+
+
+
+
 Դե, քանի որ հիշատակեցինք հրամանի կատարումը, իսկ `CALL`-ը հրաման է, հաջորդ ենթագլխում մանրամասն դիտարկենք հրամանների ինտերպրետացիան։
 
 
@@ -282,32 +484,6 @@ func Execute(p *ast.Program) error {
 
 Ղեկավարող կառուցվածքներում, ենթածրագրի մարմնում հրամանները հիշատակվում են որպես `Statement`: Սա ինտերֆեյս է՝ համարժեք Գոի `any`-ին։ Հետևաբար `interpreter` ստրուկտուրան պիտի մի ճյուղավորող մեթոդ ունենա, որը, ընտրություն կատարելով կոնկրետ հրամանի տիպի համար, կանչի համապատսխան ինտերպրետացնող մեթոդը։ Ոչ մի բարդ բան.
 
-```Go
-func (i *interpreter) execute(n ast.Statement) error {
-	switch s := n.(type) {
-	case *ast.Dim:
-		return i.executeDim(s)
-	case *ast.Let:
-		return i.executeLet(s)
-	case *ast.Input:
-		return i.executeInput(s)
-	case *ast.Print:
-		return i.executePrint(s)
-	case *ast.If:
-		return i.executeIf(s)
-	case *ast.While:
-		return i.executeWhile(s)
-	case *ast.For:
-		return i.executeFor(s)
-	case *ast.Call:
-		return i.executeCall(s)
-	case *ast.Sequence:
-		return i.executeSequence(s)
-	}
-
-	return nil
-}
-```
 
 Հիմա արդեն, բոլոր այն տեղերում, որտեղ պետք է հրամանի ինտերպրետացիա, կարող ենք կանչել այս `execute()` մեթոդը և վստահ լինել, որ կատարումը կգնա ճիշտ ուղղով։
 
@@ -332,34 +508,6 @@ func (i *interpreter) executeSequence(s *ast.Sequence) error {
 __Զանգվածի ստեղծում։__ `DIM` հրամանով զանգված ստեղծելու համար 
 
 
-## Արտահայտությունների հաշվարկը
-
 Ինչպես արդեն տեսանք աբստրակտ քերականական ծառի նկարագրության գլխում, արտահայտությունների տարատեսակները ներկայացնող հանգույցների տիպերն ութն են. `Boolean`, `Number`, `Text` և `Array` — լիտերալների համար, `Unary` և `Binary` — միտեղանի ու երկտեղանի գործողությունների համար և `Apply` — ենթածրագիր-ֆունկցիաների կիրառության համար։ Արտահայտության տրված ենթածառի տիպը տարբերակվում և համապատասխան հաշվարկող ֆունկցիան կանչվում է `evaluate` ֆունկցիայում.
 
-```Go
-func evaluate(n ast.Node, env *environment) *value {
-	var result *value
-
-	switch e := n.(type) {
-	case *ast.Boolean:
-		result = evaluateBoolean(e, env)
-	case *ast.Number:
-		result = evaluateNumber(e, env)
-	case *ast.Text:
-		result = evaluateText(e, env)
-	case *ast.Array:
-		result = evaluateArray(e, env)
-	case *ast.Variable:
-		result = evaluateVariable(e, env)
-	case *ast.Unary:
-		result = evaluateUnary(e, env)
-	case *ast.Binary:
-		result = evaluateBinary(e, env)
-	case *ast.Apply:
-		result = evaluateApply(e, env)
-	}
-
-	return result
-}
-```
 

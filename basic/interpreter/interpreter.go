@@ -121,36 +121,48 @@ func (i *interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
 		return vp, nil
 	}
 
-	// TODO վերանայել այս կետը
-	i.env.set(v.Name, &value{})
-	return i.env.get(v.Name), nil
+	return nil, fmt.Errorf("անհայտ փոփոխական՝ %s", v.Name)
 }
 
 func (i *interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
-	var result *value
+	result, err := i.evaluate(u.Right)
+	if err != nil {
+		return nil, err
+	}
 
 	switch u.Operation {
 	case "-":
-		rv, err := i.evaluate(u.Right)
-		if err != nil {
-			return nil, err
-		}
-		if !rv.isNumber() {
+		if !result.isNumber() {
 			return nil, fmt.Errorf("- գործողության արգումենտը պետք է թիվ լինի")
 		}
-		result = &value{kind: vNumber, number: -rv.number}
+
+		result.number *= -1
 	case "NOT":
-		rv, err := i.evaluate(u.Right)
-		if err != nil {
-			return nil, err
-		}
-		if !rv.isBoolean() {
+		if !result.isBoolean() {
 			return nil, fmt.Errorf("NOT գործողության արգումենտը պետք է տրամաբանական արժեք լինի")
 		}
-		result = &value{kind: vBoolean, boolean: !rv.boolean}
+
+		result.boolean = !result.boolean
 	}
 
 	return result, nil
+}
+
+func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
+	switch b.Operation {
+	case "+", "-", "*", "/", "\\", "^":
+		return i.evaluateArithmetic(b)
+	case "&":
+		return i.evaluateTextConcatenation(b)
+	case "AND", "OR":
+		return i.evaluateLogic(b)
+	case "[]":
+		return i.evaluateIndexing(b)
+	case "=", "<>", ">", ">=", "<", "<=":
+		return i.evaluateComparison(b)
+	}
+
+	return nil, fmt.Errorf("անծանոթ երկտեղանի գործողություն")
 }
 
 // թվաբանական գործողություններ
@@ -267,23 +279,6 @@ func (i *interpreter) evaluateComparison(b *ast.Binary) (*value, error) {
 	return operations[b.Operation](rl, rr), nil
 }
 
-func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
-	switch b.Operation {
-	case "+", "-", "*", "/", "\\", "^":
-		return i.evaluateArithmetic(b)
-	case "&":
-		return i.evaluateTextConcatenation(b)
-	case "AND", "OR":
-		return i.evaluateLogic(b)
-	case "[]":
-		return i.evaluateIndexing(b)
-	case "=", "<>", ">", ">=", "<", "<=":
-		return i.evaluateComparison(b)
-	}
-
-	return nil, fmt.Errorf("անծանոթ երկտեղանի գործողություն")
-}
-
 // Արտահայտությունների ցուցակի հաշվարկելը
 func (i *interpreter) evaluateExpressionList(es []ast.Expression) ([]*value, error) {
 	result := make([]*value, len(es))
@@ -347,29 +342,26 @@ func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 }
 
 func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
-	var result *value
-	var err error
-
 	switch e := n.(type) {
 	case *ast.Boolean:
-		result, err = i.evaluateBoolean(e)
+		return i.evaluateBoolean(e)
 	case *ast.Number:
-		result, err = i.evaluateNumber(e)
+		return i.evaluateNumber(e)
 	case *ast.Text:
-		result, err = i.evaluateText(e)
+		return i.evaluateText(e)
 	case *ast.Array:
-		result, err = i.evaluateArray(e)
+		return i.evaluateArray(e)
 	case *ast.Variable:
-		result, err = i.evaluateVariable(e)
+		return i.evaluateVariable(e)
 	case *ast.Unary:
-		result, err = i.evaluateUnary(e)
+		return i.evaluateUnary(e)
 	case *ast.Binary:
-		result, err = i.evaluateBinary(e)
+		return i.evaluateBinary(e)
 	case *ast.Apply:
-		result, err = i.evaluateApply(e)
+		return i.evaluateApply(e)
 	}
 
-	return result, err
+	return nil, nil
 }
 
 func (i *interpreter) executeLet(l *ast.Let) error {
