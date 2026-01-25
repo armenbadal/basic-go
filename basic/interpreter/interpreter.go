@@ -103,7 +103,7 @@ func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
 		return nil, erl
 	}
 	if !rl.isNumber() {
-		return nil, fmt.Errorf("%x գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
 	}
 
 	rr, err := i.evaluate(b.Right)
@@ -111,7 +111,7 @@ func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
 		return nil, err
 	}
 	if !rr.isNumber() {
-		return nil, fmt.Errorf("%x գործողության աջ կողմում սպասվում է թվային արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է թվային արժեք", b.Operation)
 	}
 
 	return operations[b.Operation](rl, rr), nil
@@ -145,7 +145,7 @@ func (i *interpreter) evaluateLogic(b *ast.Binary) (*value, error) {
 		return nil, err
 	}
 	if !rl.isBoolean() {
-		return nil, fmt.Errorf("%x գործողության ձախ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
 	}
 
 	rr, err := i.evaluate(b.Right)
@@ -153,7 +153,7 @@ func (i *interpreter) evaluateLogic(b *ast.Binary) (*value, error) {
 		return nil, err
 	}
 	if !rr.isBoolean() {
-		return nil, fmt.Errorf("%x գործողության աջ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
 	}
 
 	return operations[b.Operation](rl, rr), nil
@@ -204,7 +204,6 @@ func (i *interpreter) evaluateComparison(b *ast.Binary) (*value, error) {
 	}
 
 	if rl.kind != rr.kind {
-		print(fmt.Sprintf("%s | %s\n", rl.String(), rr.String()))
 		return nil, fmt.Errorf("կարող են համեմատվել միայն նույն տիպի արժեքները")
 	}
 
@@ -356,7 +355,10 @@ func (i *interpreter) executeInput(s *ast.Input) error {
 
 	fmt.Print("? ")
 	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("ներմուծման սխալ: %w", err)
+	}
 	line = strings.Trim(line, " \n\t\r")
 
 	switch line {
@@ -443,7 +445,11 @@ func (i *interpreter) executeFor(f *ast.For) error {
 	i.env.openScope()
 	defer i.env.closeScope()
 
-	param := f.Parameter.(*ast.Variable).Name
+	paramVar, ok := f.Parameter.(*ast.Variable)
+	if !ok {
+		return fmt.Errorf("FOR հրամանի պարամետրը պետք է լինի փոփոխական")
+	}
+	param := paramVar.Name
 	begin, err := i.evaluate(f.Begin)
 	if err != nil {
 		return err
@@ -508,28 +514,26 @@ func (i *interpreter) executeSequence(s *ast.Sequence) error {
 }
 
 func (i *interpreter) execute(n ast.Statement) error {
-	var err error
-
 	switch s := n.(type) {
 	case *ast.Dim:
-		err = i.executeDim(s)
+		return i.executeDim(s)
 	case *ast.Let:
-		err = i.executeLet(s)
+		return i.executeLet(s)
 	case *ast.Input:
-		err = i.executeInput(s)
+		return i.executeInput(s)
 	case *ast.Print:
-		err = i.executePrint(s)
+		return i.executePrint(s)
 	case *ast.If:
-		err = i.executeIf(s)
+		return i.executeIf(s)
 	case *ast.While:
-		err = i.executeWhile(s)
+		return i.executeWhile(s)
 	case *ast.For:
-		err = i.executeFor(s)
+		return i.executeFor(s)
 	case *ast.Call:
-		err = i.executeCall(s)
+		return i.executeCall(s)
 	case *ast.Sequence:
-		err = i.executeSequence(s)
+		return i.executeSequence(s)
 	}
 
-	return err
+	return nil
 }
