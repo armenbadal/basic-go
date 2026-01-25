@@ -31,7 +31,64 @@ func Execute(p *ast.Program) error {
 
 	// Main ֆունկցիայի կատարում
 	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Expression, 0)}
-	return i.execute(&cmain)
+	return i.executeCall(&cmain)
+}
+
+func (i *interpreter) execute(n ast.Statement) error {
+	switch s := n.(type) {
+	case *ast.Sequence:
+		return i.executeSequence(s)
+	case *ast.Dim:
+		return i.executeDim(s)
+	case *ast.Let:
+		return i.executeLet(s)
+	case *ast.Input:
+		return i.executeInput(s)
+	case *ast.Print:
+		return i.executePrint(s)
+	case *ast.If:
+		return i.executeIf(s)
+	case *ast.While:
+		return i.executeWhile(s)
+	case *ast.For:
+		return i.executeFor(s)
+	case *ast.Call:
+		return i.executeCall(s)
+	}
+
+	return nil
+}
+
+func (i *interpreter) executeSequence(s *ast.Sequence) error {
+	i.env.openScope()
+	defer i.env.closeScope()
+
+	for _, st := range s.Items {
+		err := i.execute(st)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *interpreter) executeDim(d *ast.Dim) error {
+	sz, err := i.evaluate(d.Size)
+	if err != nil {
+		return err
+	}
+	if !sz.isNumber() {
+		return fmt.Errorf("Զանգվածի չափը պետք է թիվ լինի")
+	}
+
+	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
+	for i := 0; i < len(arr.array); i++ {
+		arr.array[i] = &value{}
+	}
+	i.env.set(d.Name, arr)
+
+	return nil
 }
 
 func (i *interpreter) evaluateBoolean(b *ast.Boolean) (*value, error) {
@@ -315,23 +372,6 @@ func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
 	return result, err
 }
 
-func (i *interpreter) executeDim(d *ast.Dim) error {
-	sz, err := i.evaluate(d.Size)
-	if err != nil {
-		return err
-	}
-	if !sz.isNumber() {
-		return fmt.Errorf("type error")
-	}
-
-	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
-	for i := 0; i < len(arr.array); i++ {
-		arr.array[i] = &value{}
-	}
-	i.env.set(d.Name, arr)
-	return nil
-}
-
 func (i *interpreter) executeLet(l *ast.Let) error {
 	p, err := i.evaluate(l.Place)
 	if err != nil {
@@ -497,43 +537,4 @@ func (i *interpreter) executeFor(f *ast.For) error {
 func (i *interpreter) executeCall(c *ast.Call) error {
 	_, err := i.evaluateApply(&ast.Apply{Callee: c.Callee, Arguments: c.Arguments})
 	return err
-}
-
-func (i *interpreter) executeSequence(s *ast.Sequence) error {
-	i.env.openScope()
-	defer i.env.closeScope()
-
-	for _, st := range s.Items {
-		err := i.execute(st)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (i *interpreter) execute(n ast.Statement) error {
-	switch s := n.(type) {
-	case *ast.Dim:
-		return i.executeDim(s)
-	case *ast.Let:
-		return i.executeLet(s)
-	case *ast.Input:
-		return i.executeInput(s)
-	case *ast.Print:
-		return i.executePrint(s)
-	case *ast.If:
-		return i.executeIf(s)
-	case *ast.While:
-		return i.executeWhile(s)
-	case *ast.For:
-		return i.executeFor(s)
-	case *ast.Call:
-		return i.executeCall(s)
-	case *ast.Sequence:
-		return i.executeSequence(s)
-	}
-
-	return nil
 }
