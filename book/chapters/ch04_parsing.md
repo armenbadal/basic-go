@@ -629,7 +629,7 @@ func (p *Parser) parseNewLines() {
 
 ### Ենթածրագրի վերլուծությունը
 
-Ենթածրագրի վերլուծության `passeSubroutine()` մեթոդն էլ մանրամասն կքննարկենք. նախ՝ պարզապես ձևավորված գիտելիքի ամրապնդման համար, և հետո՝ հիմնականում նույն հնարքներն ենք օգտագործելու բոլոր վերլուծիչներում։ ??
+Ենթածրագրի վերլուծության `passeSubroutine()` մեթոդն էլ մանրամասն կքննարկենք. նախ՝ պարզապես ձևավորված գիտելիքի ամրապնդման համար, և հետո՝ հիմնականում նույն հնարքներն ենք օգտագործելու բոլոր վերլուծիչներում:
 
 Հիշենք քերականական կանոնը.
 
@@ -780,16 +780,12 @@ func (p *Parser) parseSequence() (*ast.Sequence, error) {
 
 Հրամանների շարքի վերլուծության `for` ցիկլի պայմանում օգտագործված `isStatementFirst` մեթոդը պարզապես ստուգում է, որ հերթական դիտարկվող թոքենը (lookahead-ը) լինի _FIRST(Statement)_ բազմությունից։ _FIRST(Statement)_-ը այն տերմինալային սիմվոլների բազմությունն է, որի տարրերից որևէ մեկով կարող է հրաման սկսվել։ Բալ լեզվի հրամանների դեպքում.
 
-$$
-FIRST(Statement) \equiv \left\{ DIM, LET, INPUT, PRINT, IF, WHILE, FOR, CALL \right\}
-$$
+_FIRST(Statement) ≡ { DIM, LET, INPUT, PRINT, IF, WHILE, FOR, CALL }_
+
 
 ### Հրամանների վերլուծությունը
 
-Հիմա սկսենք արդեն մեկ առ մեկ իրականացնել Բալ լեզվի բոլոր առանձին հրամանների վերլուծիչները։
-
-
-Մեկ առանձին հրաման վերլուծող `parseStatement` մեթոդը պարզապես ճյուղավորում է վերլուծության ընթացքն ըստ դիտարկվող թոքենի։ Այսպես.
+Նախորդ `parseStatement` մեթոդը՝ կողմնորոշվելով `lookahead`-ի ընթացիկ արժեքով, ճյուղավորում է վերլուծության ընթացքը։ Այսպես.
 
 ```Go
 func (p *Parser) parseStatement() (ast.Statement, error) {
@@ -816,16 +812,13 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 ```
 
+Առաջինը միչափ զանգվածը (աում են նաև _վեկտոր_) սահմանող `DIM` հրամանն է։ Սրա քերականական կանոնն է․
 
-
-
-Թող որ առաջինը լինի միչափ զանգված (աում են նաև _վեկտոր_) սահմանող `DIM` հրամանը։ Սրա քերականական կանոնն է․
-
-՝՝՝
+```
 Statement = 'DIM' IDENT '[' Expression ']'.
-՝՝՝
+```
 
-Ուրեմն, պետք է կարդալ `DIM` ծառայողական բառը, ապա զանգվածի անունը որոշող իդենտիֆիկատորը, հետո էլ՝ զանգվածի տարրերի քանակը ցուցյ տվող արտահայտությունը՝ առնված `[` և `]` փակագծերի մեջ։ `parseDim()` մեթոդը վերադարձնում է ADT-ի `Dim` հանգույցի ցուցիչ։ 
+Ուրեմն, պետք է կարդալ `DIM` ծառայողական բառը, ապա զանգվածի անունը որոշող իդենտիֆիկատորը, հետո էլ՝ զանգվածի տարրերի քանակը ցույց տվող արտահայտությունը՝ առնված `[` և `]` փակագծերի մեջ։ `parseDim()` մեթոդը վերադարձնում է `ast.Dim` հանգույցի ցուցիչ։ 
 
 ```go
 func (p *Parser) parseDim() (ast.Statement, error) {
@@ -837,31 +830,328 @@ func (p *Parser) parseDim() (ast.Statement, error) {
 	if _, err := p.match(xLeftBr); err != nil {
 		return nil, err
 	}
-	sz, err := p.parseExpression()
+	size, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 	if _, err := p.match(xRightBr); err != nil {
 		return nil, err
 	}
-	return &ast.Dim{Name: name, Size: sz}, nil
+	return &ast.Dim{Name: name, Size: size}, nil
 }
 ```
 
-Վերագրման `LET` հրամանը փոփոխականին կամ զանգվածի տարրին նոր արժեք նշանակող հրամանն է։ Քերականական կանոնը՝
+Վերագրման `LET` հրամանը փոփոխականին կամ զանգվածի տարրին նոր արժեք նշանակող հրամանն է։ Այս մեթոդում իրականացված է `LET`-ի երկու տարբերակների վերլուծությունը․ սովորական, երբ փոփոխականին է արժեք վերագրվում, և զանգվածի տարրին արժեք նշանակելու դեպքում։
+
+```Go
+func (p *Parser) parseLet() (ast.Statement, error) {
+	p.next() // LET
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+	var place ast.Expression = &ast.Variable{Name: name}
+
+	if p.has(xLeftBr) {
+		p.next() // '['
+		index, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.match(xRightBr); err != nil { // ']'
+			return nil, err
+		}
+		place = &ast.Binary{Operation: "[]", Left: place, Right: index}
+	}
+
+	if _, err := p.match(xEq); err != nil {
+		return nil, err
+	}
+
+	assignable, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Let{Place: place, Value: assignable}, nil
+}
+```
+
+Ներմուծման հրամանը երկու տարր է․ `INPUT` բառը և փոփոխականը, որին պետք է վերագրվի ներմուծված արժեքը։
+
+```Go
+func (p *Parser) parseInput() (ast.Statement, error) {
+	p.next() // INPUT
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Input{Place: &ast.Variable{Name: name}}, nil
+}
+```
+
+Արտածման հրամանը, կարելի է ասել, սիմետրիկ է ներմուծման հրամանին․ այսպեղ `PRINT` բառն է և արտածվող արտահայտությունը։
+
+```Go
+func (p *Parser) parsePrint() (ast.Statement, error) {
+	p.next() // PRINT
+	value, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	return &ast.Print{Value: value}, nil
+}
+```
+
+Ճյուղավորման `IF` հրամանի վերլուծիչը, թերևս, մեր բոլոր վերլուծող ենթածրագրերից ամենաբարդն է (չնայած, ուշադիր կարդալու դեպքում, դրան «բարդ» ասելը մի փոքր չափազանցություն կլինի)։ Հիշենք քերականական կանոնը.
 
 ```
-Statement = 'LET' IDENT ['[' Expression ']'] '=' Expression.
+Statement = 'IF' Expression 'THEN' Sequence
+               { 'ELSEIF' Expression 'THEN' Sequence } 
+			   [ 'ELSE' Sequence ]
+            'END' 'IF'.
+```
+
+Վերլուծող `parseIf()` մեթոդն ունի երեք տրամաբանական մաս։ Նախ վերլուծվում է առաջին, հիմնական պայմանն ու դրան համապատասխան `THEN` բլոկը։
+
+```Go
+func (p *Parser) parseIf() (ast.Statement, error) {
+	p.next() // IF
+	cond, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xThen); err != nil {
+		return nil, err
+	}
+	decision, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+	result := &ast.If{Condition: cond, Decision: decision}
+```
+
+Այս առաջին հատվածի համար ստեղծվում է `ast.If` հանգույց, որում արժեքվորվում են միայն `Condition` և `Decision` դաշտերը։
+
+Այնուհետև վերլուծվում են `ELSEIF` ճյուղերն իրենց `THEN` բլոկներով։ Այս հատվածի վերլուծությունից ստացված ենթածառը կապվում է նախորդ հատվածում ստեղծված `ast.If` հանգույցի `Alternative` դաշտին։ `ipe` ցուցիչը «սահում» է վերլուծված `ELSEIF` հանգույցների համար ստեղծված `ast.If` օբյեկտների `Alternative` դաշտերով՝ դրանով իսկ ստեղծելով `ast.If` տիպի հանգույցների մի կապակցված ցուցակ։
+
+```Go
+	ipe := result
+	for p.has(xElseIf) {
+		p.next() // ELSEIF
+		cond, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.match(xThen); err != nil {
+			return nil, err
+		}
+		decision, err := p.parseSequence()
+		if err != nil {
+			return nil, err
+		}
+		alternative := &ast.If{Condition: cond, Decision: decision}
+		ipe.Alternative = alternative
+		ipe = alternative
+	}
+}
+```
+
+Վերջում, եթե հանդիպել է `xElse` պիտակը, վերլուծվում է `ELSE` բլոկը, և ստեղծված ենթածառը կապվում է ամենավերջին `ast.If` հանգույցի `Alternative` դաշտին։
+
+```Go
+	if p.has(xElse) {
+		p.next() // ELSE
+		alternative, err := p.parseSequence()
+		if err != nil {
+			return nil, err
+		}
+		ipe.Alternative = alternative
+	}
+```
+
+Ճյուղավորման կառուցվածքի վերլուծությունն ավարտվում է `END` և `IF` ծառայողական բառերի ակնկալիքով։
+
+```Go
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xIf); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+```
+
+Նախապայմանով `WHILE` ցիկլը վերլուծող մեթոդը մանրամասն նկարագրության կարիք չունի. պարզապես հաջորդաբար վերլուծվում են քերականական հավասարման աջ մասի անդամները։ Արդյունքում ստեղծվում է `ast.While` տիպի հանգույց։
+
+```Go
+func (p *Parser) parseWhile() (ast.Statement, error) {
+	p.next() // WHILE
+	condition, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xWhile); err != nil {
+		return nil, err
+	}
+
+	return &ast.While{Condition: condition, Body: body}, err
+}
+```
+
+Պարամետրով `FOR` ցիկլի վերլուծությունը, չնայած որ ամենաերկարն է, բայց համարյա գծային է՝ վերլուծվում են իրար հաջորդող քերականական տարրերը։ Հիշենք քերականական հավասարումը.
+
+```
+Statement = 'FOR' IDENT '=' Expression 'TO' Expression ['STEP' ['+'|'-'] NUMBER] Sequence 'END' 'FOR'.
+```
+
+Նախ վերլուծվում է ցիկլի հաշվիչի սկզբնական ու վերջնական արժեքները որոշող կտորը.
+
+```Go
+func (p *Parser) parseFor() (ast.Statement, error) {
+	p.next() // FOR
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+	param := &ast.Variable{Name: name}
+	if _, err := p.match(xEq); err != nil {
+		return nil, err
+	}
+	begin, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.match(xTo); err != nil {
+		return nil, err
+	}
+	end, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+```
+
+Այս կտորի արդյունքում ստանում ենք `name`-ը պարամետրի անունի համար, `begin`-ը՝ պարամետրի սկզբնական արժեքի համար և `end`-ը՝ վերջնական արժեքի համար։
+
+Հետո, եթե հանդիպել է `xStep` պիտակով լեքսեմ, վերլուծում ենք `+` կամ `-` ոչ պարտադի նշանով սկսվող թիվ, որը պետք է ծառայի որպես ցիկլի հաշվիչի արժեքի փոփոխմա արժեք։
+
+```Go
+	var step ast.Expression
+	if p.has(xStep) {
+		p.next() // STEP
+		sign := "+"
+		if p.has(xSub) {
+			p.next() // '-'
+			sign = "-"
+		} else if p.has(xAdd) {
+			p.next() // '+'
+		}
+
+		lex, err := p.match(xNumber)
+		if err != nil {
+			return nil, err
+		}
+		num, _ := strconv.ParseFloat(lex, 64)
+		step = &ast.Number{Value: num}
+		if sign == "-" {
+			step = &ast.Unary{Operation: sign, Right: step}
+		}
+	} else {
+		step = &ast.Number{Value: 1.0}
+	}
+```
+
+Եթե `STEP` հատվածը բացակայում է, ապա `step`-ին կապում ենք `1.0` արժեքով `ast.Number` հանգույց։
+
+
+Հետո վերլուծում ենք ցիկլի մարմինը կազմող հրամանների հաջորդականությունն ու կապում `body` փոփոխականին։
+
+```Go
+	body, err := p.parseSequence()
+	if err != nil {
+		return nil, err
+	}
+```
+
+Ամենավերջում համոզվում ենք, որ `FOR` ցիկլի սահմանումն ավարտվում է `END` և `FOR` բառերով ու վերադարձնում ենք `param`, `begin`, `end`, `step` և `body` ենթածառերով արժեքավորված `ast.For` հանգույց։
+
+```Go
+	if _, err := p.match(xEnd); err != nil {
+		return nil, err
+	}
+	if _, err := p.match(xFor); err != nil {
+		return nil, err
+	}
+
+	return &ast.For{
+		Parameter: param,
+		Begin:     begin,
+		End:       end,
+		Step:      step,
+		Body:      body}, nil
+}
+```
+
+Հրամաններից վերջինը ենթածրագրի կանչի `CALL` հրամանն է։ Լեզվի նկարագրության մեջ արդեն նկարագրեն ենք սրա տեսքն ու վարքը, իսկ վերլուծությունը նորից գծային է. `CALL` բառը, ենթածրագրի անունը և արգումենտների ցուցակը, որը կարող է բացակայել։ `parseCall` մեթոդը կառուցում է `ast.Call` տիպի հանգույց։
+
+```Go
+func (p *Parser) parseCall() (ast.Statement, error) {
+	p.next() // CALL
+	name, err := p.match(xIdent)
+	if err != nil {
+		return nil, err
+	}
+
+	arguments, err := p.parseExpressionList()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Call{Callee: name, Arguments: arguments}, nil
+}
+```
+
+Սրանով ավարտեցինք հրամանների (կամ ղեկավարող կառուցվածքների) վերլուծիչների իրականացումները։ Հաջորդիվ ուսումնասիրելու ենք արտահայտությունների վերլուծությունը, բայց մինչև դրանց անցնելը, նշենք `parseExpressionList()` մեթոդի մասին։ Սա վերլուծում է ստորակետով իրարից անջատված արտահայտությունների ցուցակ ու վերադարձնում է այդ արտահայտությունների ենթածառերի զանգվածը։ 
+
+```Go
+func (p *Parser) parseExpressionList() ([]ast.Expression, error) {
+	elements := make([]ast.Expression, 0)
+	
+	// իրականացման սխեման նույնական է parseIdentList()-ին
+	
+	return elements, nil
+}
 ```
 
 
 ### Արտահայտությունների վերլուծությունը
 
-Արտահայտություններում երկտեղանի գործողությունների վերլուծիչները շատ նման են միմյանց։ Սկսենք `Expression = Conjunction { 'OR' Conjunction }.` կանոնից։ 
+Լեզվի նկարագրության գլխում խոսեցինք, թե ինչպե՛ս են արտահայտությունները բաժանվված մակարդակների՝ դրանց նախապատվությունը բնականորեն, մաթեմատիկորեն ապահովելու համար։ Վերլուծության մասում այդ հավասարությունները «թարգմանելու» ենք Գո կոդի (ինչպես արեցինք հրամանների՝ ղեկավարող կառուցվածքների համար)։
 
-```go
+Սկսենք նախաապատվությունների ամենացածր մակարդակում գտնվող տրամաբանական գործողություններից։ Սրանք երկուսն են. __ԿԱՄ__ ու __ԵՎ__, որոնցից __ԵՎ__-ը, լինելով մուլտիպլիկատիվ գործողություն, ավելի բարձր նախապատվություն ունի քան __ԿԱՄ__-ը։ Ուրեմն, ինչպես և սահմանված է քերականությամբ, դիզյունքցիան `OR` գործողությամբ իրար կապված կոնյունքցիաների շղթա է.
+
+```
+Expression = Conjunction { 'OR' Conjunction }.
+```
+
+Վերլուծիչն էլ, արդեն զարմանալի չէ, ուղղակիորեն արտահայտում է այս հավասարումը. վերլուծել կոնյունքցիա, ապա, քանի դեռ տեսնում ենք `xOr` պիտակը, վերլուծել ևս մի կոնյունքցիա, ու այդ երկուսն իրար կապել `ast.Binary` հանգույցով։
+
+```Go
 func (p *Parser) parseExpression() (ast.Expression, error) {
-	res, err := p.parseConjunction()
+	result, err := p.parseConjunction()
 	if err != nil {
 		return nil, err
 	}
@@ -872,18 +1162,214 @@ func (p *Parser) parseExpression() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		res = &ast.Binary{Operation: "OR", Left: res, Right: right}
+		result = &ast.Binary{Operation: "OR", Left: result, Right: right}
+	}
+
+	return result, nil
+}
+```
+
+Արդյունքում, եթե, օրինակ, վերլուծենք `TRUE OR FALSE OR TRUE` շղթան, ապա կկառուցվի դեպի _ձախ_ աճող ծառ.
+
+![արտահայտության ծառ](expression-trees-left.png)
+
+Լրիվ նույն կաղապարով են կառուցված բոլոր ձախ-զուգորդական երկտեղանի գործողությունների վերլուծիչները։ Դուրս բերենք կաղապարը փսևդոկոդի տեսքով.
+
+```Go
+func (p *Parser) parseBinary() (*ast.Binary, error) {
+	result, _ := վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+
+    for տեսնում ենք այս մակարդակի գործողություններից որևէ մեկը {
+       op := վերցնել գործողությունը
+       right, _ := վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+       result := result-ից և right-ից կառուցել ast.Binary հանգույց
+	}
+
+    return result, nil
+}
+```
+
+Ասվածն ամրապնդելու համար քննարկենք `parseAddtion()` մեթոդը, որը վերլուծում է թվաբանական ադիտիվ `+` և `-` գործողություններն ու տողերի միակցման `&` գործողությունը։ Նախապատվությունների ցուցակում ադիտիվներից մի մակարդակ բարձ են թվաբանական մուլտիպլիկատիվ `*`, `/` և `\` գործողությունները, որոնց համար, նորից օգտագործելով `parseBinary` սխեման, իրականացված է `parseMultiplication()` մեթոդը։ Ուրեմն.
+
+```Go
+func (p *Parser) parseAddition() (ast.Expression, error) {
+	// վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+	result, err := p.parseMultiplication()
+	if err != nil {
+		return nil, err
+	}
+
+	// քանի դեռ տեսնում ենք այս մակարդակի գործողություններից որևէ մեկը
+	for p.has(xAdd, xSub, xAmp) {
+		// վերցնել գործողությունը
+		opc := operation[p.lookahead.token]
+		p.next() // '+', '-', '&'
+		// վերլուծել հաջորդ բարձր նախապատվության մակարդակը
+		right, err := p.parseMultiplication()
+		if err != nil {
+			return nil, err
+		}
+		// կառուցել Binary հանգույց
+		result = &ast.Binary{Operation: opc, Left: result, Right: right}
+	}
+
+	// վերադարձնել կառուցված ենթածառի արմատը
+	return result, nil
+}
+```
+
+Այս մեթոդում գործողության պիտակից, օրինակ՝ `xAdd`, գործողության տեքստային ներկայացումը ստանալու համար օգտագործված է `opration` արտապատկերումը՝ սահմանված հետևյալ կերպ.
+
+```Go
+var operation = map[int]string{
+	xAdd: "+",
+	xSub: "-",
+	xAmp: "&",
+	xMul: "*",
+	xDiv: "/",
+	xMod: "\\",
+	xPow: "^",
+	xEq:  "=",
+	xNe:  "<>",
+	xGt:  ">",
+	xGe:  ">=",
+	xLt:  "<",
+	xLe:  "<=",
+	xAnd: "AND",
+	xOr:  "OR",
+	xNot: "NOT",
+}
+```
+
+Առաջ գնալու համար նորից նշենք, որ նույն սխեմայով են կառուցված `parseConjunction()`, `parseMultiplication()` մեթոդները։
+
+Նախապատվությունների աղյուսակում տրամաբանական գործողություններին հաջորդող երկու տողերում կանգնած են համեմատման գործողությունները, որոցից `=`-ը և `<>`-ն ունեն ավելի ցածր նախապատվություն, քան `<`, `<=`, `>` և `>`։ Համեմատումները նաև այլ բինար գործողություններից տարբերվում են նրանով, որ դրանցով շղթաներ չեն կազմվում՝ զուգորդական չեն։ Այդ պատճառով էլ `parseEquality()` և `parseComparison()` մեթոդներում `parseBinary` սխեմայի `for` կրկնության փոխարեն օգտագործված է պայմանական `if`-ը։ 
+
+Այստեղ բերենք միայն `parseEquality()` մեթոդի իրականացումը. `parseComparison()`-ը նույնական է, միայն այն տարբերությամբ, որ ավելի բարձր մակարդակի համար կանչում է `parseAddition()`-ը։
+
+```Go
+func (p *Parser) parseEquality() (ast.Expression, error) {
+	res, err := p.parseComparison()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.has(xEq, xNe) {
+		opc := operation[p.lookahead.token]
+		p.next() // '=', '<>'
+		right, err := p.parseComparison()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: opc, Left: res, Right: right}
 	}
 
 	return res, nil
 }
 ```
 
-Արտահայտությունների վերլուծությունը սկսենք դրանցից ամենապարզերից, որոնց քերականության մեջ տվեցինք _Factor_ ընդհանուր անունը։ Դրանք տրամաբանական, թվային, տեքստային ու զանգվածների լիտերալներն են, որոնց գալիս են լրացնելու փոփոխականները, ֆունկցիայի կիրառումը և խմբավորման փակագծերը։
+Նկատենք, որ մակարդակների այսպիսի տրոհումն արգելում է կազմել `a = b <> c = d` տիպի շղթաներ. հենց սա է նշանակում «չզուգորդվող», բայց թույլատրում է գրել `a > b = c <= d` արտահայտությունը, որի համար կստեղծվի այսպիսի մի ծառ.
 
-՝՝՝
+![համեմատությունների համեմատում](expression-comparison.png)
+
+Աստիճան բարձրացնելու երկտեղանի գործողությունը մյուսներից տարբերվում է իր աջ-զուգորդականությամբ։ Այսինքն, եթե գրում ենք աստիճանների շղթա `x^y^z`, ապա ակնկալում ենք, որ այն պետք է հաշվարկվի `x^(y^z)` կանոնով։ `parsePower()` մեթոդի իրականացման մեջ դա ստանում ենք `^` գործողության աջ կողմում `parsePower()`-ի ռեկուրսիվ կանչով։
+
+```Go
+func (p *Parser) parsePower() (ast.Expression, error) {
+	res, err := p.parseUnary()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.has(xPow) {
+		p.next() // '^'
+		right, err := p.parsePower()
+		if err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: "^", Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Արդյունքում, երբ կվերլուծվի վերը բերված `x^y^z` օրինակը, կկառուցվի դեպի աջ աճող ծառ։
+
+![աստիճան բարձրացնելու ծառը](expression-power.png)
+
+Աստիճանի գործողությանը նախապատվությամբ հաջորդում են միտեղանի (ունար) գործողությունները՝ `+`, `-`, `NOT`: Դրանք բոլորն էլ, բնականաբար, աջ֊զուգորդվող են. `-+-5` արտահայտությունը հաշվարկվում է `-(+(-5))` կանոնով։ 
+
+Վերլուծելիս նախ՝ ցիկլում կարդում ենք բոլոր գործողություններն ու հակառակ կարգով հավաքում `ops` ցուցակում։
+
+```Go
+func (p *Parser) parseUnary() (ast.Expression, error) {
+	var ops []string
+	for p.has(xAdd, xSub, xNot) {
+		opc := operation[p.lookahead.token]
+		p.next() // '+', '-', NOT
+		ops = slices.Insert(ops, 0, opc)
+	}
+```
+
+Հետո վերլուծում ենք ենթաարտահայտությունը, որին կիրառված է վերջին գործողությունը.
+
+```Go
+	right, err := p.parseSubscript()
+	if err != nil {
+		return nil, err
+	}
+```
+
+Ապա, նորից անցնելով գործողությունների `ops` ցուցկով, կառուցում ենք `ast.Unary` հանգույցների շղթա։
+
+```Go
+	for _, opc := range ops {
+		right = &ast.Unary{Operation: opc, Right: right}
+	}
+
+	return right, nil
+}
+```
+
+Զանգվածի տարրին դիմելու, ինդեքսավորման `[]` գործողությունը իրականացրել ենք որպես երկտեղանի գործողություն, որի ձախ կողմում պետք է լինի պարզ արտահայտություն, իսկ աջ կողմում ընդհանուր արտահայտություն։
+
+```
+Subscript = Factor { '[' Expression ']' }.
+```
+
+Ձախ կողմի արտահայտության հաշվավարկի արդյունքը պետք է լինի զանգված, իսկ աջ կողմի արտահայտությանը՝ թիվ, որպես ինդեքս օգգտագործելու համար։
+
+```Go
+func (p *Parser) parseSubscript() (ast.Expression, error) {
+	res, err := p.parseFactor()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.has(xLeftBr) {
+		p.next() // '['
+		right, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err = p.match(xRightBr); err != nil {
+			return nil, err
+		}
+		res = &ast.Binary{Operation: "[]", Left: res, Right: right}
+	}
+
+	return res, nil
+}
+```
+
+Վերջապես, հերթը հասավ արտահայտություններից ամենապարզերի վերլուծությանը, որոնց քերականության սահմանման մեջ տվել ենք _Factor_ ընդհանուր անունը։ Դրանք տրամաբանական, թվային, տեքստային ու զանգվածների լիտերալներն են, որոնց գալիս են լրացնելու փոփոխականները, ֆունկցիայի կիրառումը և խմբավորման փակագծերը։
+
+```
 Factor = TRUE | FALSE | NUMBER | TEXT | ArrayLiteral | IdentOrApply | Grouping.
-՝՝՝
+```
+
+Ըստ էության, սրանք նաև ամենաբարձր նախապատվություն ունեցող արտահայտություններն են։
 
 Ահա վերին մակարդակի `parseFactor` մեթոդը, որը, `lookahead`-ի ընթացիկ արժեքով ուղղորդվելով, կանչում է համապատասխան պարզ արտահայտության վերլուծման մեթոդը։
 
@@ -1015,3 +1501,88 @@ func (p *Parser) parseGrouping() (ast.Expression, error) {
 ```
 
 
+## Սխալների հայտնաբերման ու վերլուծության վերականգնման մասին
+
+Մեր իրականացրած վերլուծիչը, երբ հանդիպում է շարահյուսական սխալի, դադարեցում է վերլուծությունը ու վերադարձնում է `error` օբյեկտը՝ համապատասխան սխալի հաղորդագրությամբ։ Անշուշտ, սա շատ պարզ, և, մեծ ինտերպրետատորներում, կոմպիլյատորներում անհարմար մոտեցում է։ Եթե, օրինակ, ենթադրենք, որ ծրագրավորողը կոդում թույլ է տվել մի քանի սխալներ, ապա սրանք կհայտնաբերվեն ոչ թե վերլուծիչի մի անցումով, այլ՝ հերթականությամբ։ Ամեն մի հաջորդ սխալը վերլուծիչը կհայտնաբերի, երբ ծրագրավորողը կուղղի դրան նախորդողը։ Վերլուծության որ մակարդակում էլ որ կհանդիպի սխալը, այն, պղպջակի պես, վերլուծող մեթոդների երկրորդ վերադարձվող արժեքով «դուրս կլողա» դեպի վերև, մինչև `Parser.Parse()` մեթոդը կանչող ղեկավարող կոդը։
+
+Ռեկուրսիվ վայրէջքի եղանակով իրականացված վերլուծիչներում, հատկապես, եթե դրանք իրականացվում են կոմպիլյատորների համար, շատ հարմար է, այսպես կոչված, _panic mode recovery_ (թարգմանենք սա. _խուճապի վիճակից վերականգնման_) եղանակը։ Էությունն այն է, որ երբ վերլուծիչը հանդիպում է սխալի, ապա, ոչ թե դադարեցնում է իր աշատանքը, այլ գրանցում է այդ սխալի տվյալները սխալների ցուցակում, նշում է կատարում, որ վերլուծիչն անցնում է «խուճապի վիճակին», կարդում ու դեն է նետում հաջորդ լեքսեմներն այնքան ժամանակ, մինչև կհանդիպի մի կետի, որտեղից վստահաբար կարելի է վերսկսել վերլուծությունը։ Նույնը շարունակվում է մինչև կվերլուծվի ծրագրի ամբողջ տեքստը։ Վերջում, եթե սխալների ցուցակը դատարկ է, ապա, ակնհայտորեն, ծրագրում ամեն ինչ ճիշտ է, կարելի է անցնել ինտերպրետացիային (կամ կոդի գեներացիային՝ կոմպիլյատորների դեպքում)։ Իսկ եթե ցուցակում սխալներ են գրանցվել, ապա դրանք արտածվում են ծրագրավորողի համար ու ինտերպրետատորը (կոմպիլյատորը) դադարեցնում է իր աշխատանքը։ (Նիկլաուս Վիրտի «Կոմպիլյատորների կառուցումը» գրքում, օրինակ, բավականին լավ նկարագրված ու ծրագրավորած է այս մոտեցումը։)
+
+Մեր վերլուծիչի կոդում խուճապի վիճակից վերականգնման եղանակով սխալների հայտնաբերման ու ազդարարման համար պետք է մի քանի փոփոխություններ անել։ Առաջինը, ընդլայնենք `Parser` ստրուկտուրան երկու նոր դաշտերով. մեկը՝ սխալների ցուցակի համար, մյուսը՝ խուճապի վիճակը նշելու համար։
+
+```Go
+type Parser struct {
+	scanner   *scanner // բառային վերլուծիչի ցուցիչ
+	lookahead *lexeme  // look-a-head սիմվոլ
+	errors    []error  // սխալների ցուցակ
+	panicMode bool     // խուճակի վիճակի ցուցիչ
+}
+```
+
+Հաջորդը՝ պետք է ձևափոխել `match()` մեթոդը, որը հայտնաբերած սխալը կգրանցի `errors` ցուցակում և, անհրաժեշտության դեպքում, կանջատի կամ կմիացնի խուճապի վիճակի ցուցիչը։ Օրինակ, այսպես.
+
+```Go
+func (p *Parser) match(exp int) (string, error) {
+	if p.lookahead.is(exp) {
+		value := p.lookahead.value
+		p.next()
+		// ամեն ինչ լավ է, դուրս ենք գալիս խուճապի վիճակից
+		p.panicMode = false 
+		return value, nil
+	}
+
+	// սխալ է, կառուցում ենք սխալի հաղորդագրությունը
+	err := fmt.Errorf("Տող %d: սպասվում է %v, բայց հանդիպել է '%s'։", 
+		p.lookahead.line, exp, p.lookahead.value)
+
+	// եթե խուճապի վիճակում չենք, գրանցում ենք սխալը 
+	// և անցում ենք խուճապի վիճակի
+	if !p.panicMode {
+		p.errors = append(p.errors, err)
+		p.panicMode = true
+	}
+
+	return "", err
+}
+```
+
+Հետո պետք է հարմարեցնել վերլուծիչ մեթոդները։ Օրինակ, `parseDim()`-ը կունենա հետևյալ նոր տեսքը.
+
+```Go
+func (p *Parser) parseDim() (ast.Statement, error) {
+	p.next() // DIM
+	name, _ := p.match(xIdent)
+	p.match(xLeftBr)
+	
+	size, err := p.parseExpression()
+	if err != nil {
+		p.syncTo(xRightBr, xNewLine)
+	}
+	
+	p.match(xRightBr)
+	return &ast.Dim{Name: name, Size: size}, nil
+}
+```
+
+Արտահայտության վերլուծությունից ստացված սխալի մշակման դեպքում կանչված `syncTo()` մեթոդը կարդում է ու դեն է նետում լեքսեմներն այնքան ժամանակ, մինչև կհանդիպի իր արգումենտում տրված պիտակներից որևէ մեկը։ Այս եղանակով վերլուծիչը «փնտրում է» այն տեղը, որտեղից հավաստիորեն կարող է վերսկսել իր աշխատանքը։
+
+```Go
+func (p *Parser) syncTo(tokens ...int) {
+	for !p.lookahead.is(xEOF) && !p.has(tokens...) {
+		p.next()
+	}
+}
+```
+
+Օրինակ, եթե ծրագրում գրված է սխալ պարունակող `DIM a[5++]` տողը, ապա `parseExpression()` մեթոդը կվերադարձնի սխալ, որը կգրանցվի `errors` ցուցակում, ապա `syncTo()` կանչը կկարդա ու դեն կնետի մինչ `]` նիշը հանդիպող բոլոր լեքսեմները ու վերլուծությունը կշարունակվի հաջորդ տողից։
+
+`Parser.Parse()` մեթոդն էլ պետք է փոխել այնպես, որ այն մեկ սխալի փոխարեն վերադարձնի բոլոր հայտնաբերված սխալների ցուցակը։ Օրինակ, այսպես.
+
+```Go
+func (p *Parser) Parse() (*ast.Program, []error) {
+	p.next()
+	program, _ := p.parseProgram()
+	return program, p.errors
+}
+```
+
+Թերևս, այսքանը սխալների հայտնաբերման ու վերլուծության վերականգնման ամենահայտնի ու գործնական եղանակի մասին։ Այնուամենայնիվ, այս գրքում Բալի շարահյուսական վերլուծիչում կանգ ենք առել առաջին սխալը հանդիպելիս վերլուծությունը դադարեցնելու մոտեցման վրա։ Դա բավարար է այս տիպի ուսումնական ինտերպրետատորի համար, պարզ է իրականացման տեսակետից և թույլ է տալիս կենտրոնանալ այլ, ավելի կարևոր հարցերի վրա։

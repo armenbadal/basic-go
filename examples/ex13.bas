@@ -1,0 +1,4 @@
+SUB Main
+    PRINT TRUE OR FALSE OR TRUE
+    PRINT 1 + 2 + 3
+END SUB

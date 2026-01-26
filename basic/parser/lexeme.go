@@ -2,8 +2,11 @@ package parser
 
 import "slices"
 
+type token int
+
+//go:generate stringer -type=token -linecomment -output=token_string.go
 const (
-	xNone = iota
+	xNone token = iota
 
 	// լիտերալներ
 	xNumber // թիվ
@@ -61,11 +64,11 @@ const (
 )
 
 type lexeme struct {
-	token int    // պիտակ
+	token token  // պիտակ
 	value string // արժեք
 	line  int    // տողը
 }
 
-func (l *lexeme) is(exps ...int) bool {
+func (l *lexeme) is(exps ...token) bool {
 	return slices.Contains(exps, l.token)
 }

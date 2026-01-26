@@ -47,6 +47,7 @@ func (s *scanner) next() *lexeme {
 
 	// նոր տողի անցման նիշ
 	if s.peek() == '\n' {
+		s.line++
 		s.read()
 		return &lexeme{xNewLine, "<-/", s.line}
 	}
@@ -114,7 +115,7 @@ func (s *scanner) scanText() *lexeme {
 }
 
 // ծառայողական բառեր
-var keywords = map[string]int{
+var keywords = map[string]token{
 	"SUB":    xSubroutine,
 	"DIM":    xDim,
 	"LET":    xLet,
@@ -157,7 +158,7 @@ func (s *scanner) scanIdentifierOrKeyword() *lexeme {
 }
 
 // մետասիմվոլներ․ գորողություններ, կետադրություն
-var metasymbols = map[rune]int{
+var metasymbols = map[rune]token{
 	'+':  xAdd,
 	'-':  xSub,
 	'*':  xMul,

@@ -50,7 +50,7 @@ func TestComments(t *testing.T) {
 func TestKeywords(t *testing.T) {
 	scan := scannerWithInput("SUB LET INPUT PRINT IF THEN ELSEIF ELSE WHILE FOR TO STEP CALL END AND OR NOT")
 
-	expected := []int{xSubroutine, xLet, xInput, xPrint, xIf, xThen, xElseIf, xElse,
+	expected := []token{xSubroutine, xLet, xInput, xPrint, xIf, xThen, xElseIf, xElse,
 		xWhile, xFor, xTo, xStep, xCall, xEnd, xAnd, xOr, xNot, xEof}
 
 	for _, ex := range expected {

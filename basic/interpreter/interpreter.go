@@ -31,7 +31,64 @@ func Execute(p *ast.Program) error {
 
 	// Main ֆունկցիայի կատարում
 	cmain := ast.Call{Callee: "Main", Arguments: make([]ast.Expression, 0)}
-	return i.execute(&cmain)
+	return i.executeCall(&cmain)
+}
+
+func (i *interpreter) execute(n ast.Statement) error {
+	switch s := n.(type) {
+	case *ast.Sequence:
+		return i.executeSequence(s)
+	case *ast.Dim:
+		return i.executeDim(s)
+	case *ast.Let:
+		return i.executeLet(s)
+	case *ast.Input:
+		return i.executeInput(s)
+	case *ast.Print:
+		return i.executePrint(s)
+	case *ast.If:
+		return i.executeIf(s)
+	case *ast.While:
+		return i.executeWhile(s)
+	case *ast.For:
+		return i.executeFor(s)
+	case *ast.Call:
+		return i.executeCall(s)
+	}
+
+	return nil
+}
+
+func (i *interpreter) executeSequence(s *ast.Sequence) error {
+	i.env.openScope()
+	defer i.env.closeScope()
+
+	for _, st := range s.Items {
+		err := i.execute(st)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *interpreter) executeDim(d *ast.Dim) error {
+	sz, err := i.evaluate(d.Size)
+	if err != nil {
+		return err
+	}
+	if !sz.isNumber() {
+		return fmt.Errorf("Զանգվածի չափը պետք է թիվ լինի")
+	}
+
+	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
+	for i := 0; i < len(arr.array); i++ {
+		arr.array[i] = &value{}
+	}
+	i.env.set(d.Name, arr)
+
+	return nil
 }
 
 func (i *interpreter) evaluateBoolean(b *ast.Boolean) (*value, error) {
@@ -64,36 +121,48 @@ func (i *interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
 		return vp, nil
 	}
 
-	// TODO վերանայել այս կետը
-	i.env.set(v.Name, &value{})
-	return i.env.get(v.Name), nil
+	return nil, fmt.Errorf("անհայտ փոփոխական՝ %s", v.Name)
 }
 
 func (i *interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
-	var result *value
+	result, err := i.evaluate(u.Right)
+	if err != nil {
+		return nil, err
+	}
 
 	switch u.Operation {
 	case "-":
-		rv, err := i.evaluate(u.Right)
-		if err != nil {
-			return nil, err
-		}
-		if !rv.isNumber() {
+		if !result.isNumber() {
 			return nil, fmt.Errorf("- գործողության արգումենտը պետք է թիվ լինի")
 		}
-		result = &value{kind: vNumber, number: -rv.number}
+
+		result.number *= -1
 	case "NOT":
-		rv, err := i.evaluate(u.Right)
-		if err != nil {
-			return nil, err
-		}
-		if !rv.isBoolean() {
+		if !result.isBoolean() {
 			return nil, fmt.Errorf("NOT գործողության արգումենտը պետք է տրամաբանական արժեք լինի")
 		}
-		result = &value{kind: vBoolean, boolean: !rv.boolean}
+
+		result.boolean = !result.boolean
 	}
 
 	return result, nil
+}
+
+func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
+	switch b.Operation {
+	case "+", "-", "*", "/", "\\", "^":
+		return i.evaluateArithmetic(b)
+	case "&":
+		return i.evaluateTextConcatenation(b)
+	case "AND", "OR":
+		return i.evaluateLogic(b)
+	case "[]":
+		return i.evaluateIndexing(b)
+	case "=", "<>", ">", ">=", "<", "<=":
+		return i.evaluateComparison(b)
+	}
+
+	return nil, fmt.Errorf("անծանոթ երկտեղանի գործողություն")
 }
 
 // թվաբանական գործողություններ
@@ -103,7 +172,7 @@ func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
 		return nil, erl
 	}
 	if !rl.isNumber() {
-		return nil, fmt.Errorf("%x գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
 	}
 
 	rr, err := i.evaluate(b.Right)
@@ -111,7 +180,7 @@ func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
 		return nil, err
 	}
 	if !rr.isNumber() {
-		return nil, fmt.Errorf("%x գործողության աջ կողմում սպասվում է թվային արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է թվային արժեք", b.Operation)
 	}
 
 	return operations[b.Operation](rl, rr), nil
@@ -145,7 +214,7 @@ func (i *interpreter) evaluateLogic(b *ast.Binary) (*value, error) {
 		return nil, err
 	}
 	if !rl.isBoolean() {
-		return nil, fmt.Errorf("%x գործողության ձախ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
 	}
 
 	rr, err := i.evaluate(b.Right)
@@ -153,7 +222,7 @@ func (i *interpreter) evaluateLogic(b *ast.Binary) (*value, error) {
 		return nil, err
 	}
 	if !rr.isBoolean() {
-		return nil, fmt.Errorf("%x գործողության աջ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
+		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
 	}
 
 	return operations[b.Operation](rl, rr), nil
@@ -204,28 +273,10 @@ func (i *interpreter) evaluateComparison(b *ast.Binary) (*value, error) {
 	}
 
 	if rl.kind != rr.kind {
-		print(fmt.Sprintf("%s | %s\n", rl.String(), rr.String()))
 		return nil, fmt.Errorf("կարող են համեմատվել միայն նույն տիպի արժեքները")
 	}
 
 	return operations[b.Operation](rl, rr), nil
-}
-
-func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
-	switch b.Operation {
-	case "+", "-", "*", "/", "\\", "^":
-		return i.evaluateArithmetic(b)
-	case "&":
-		return i.evaluateTextConcatenation(b)
-	case "AND", "OR":
-		return i.evaluateLogic(b)
-	case "[]":
-		return i.evaluateIndexing(b)
-	case "=", "<>", ">", ">=", "<", "<=":
-		return i.evaluateComparison(b)
-	}
-
-	return nil, fmt.Errorf("անծանոթ երկտեղանի գործողություն")
 }
 
 // Արտահայտությունների ցուցակի հաշվարկելը
@@ -291,46 +342,26 @@ func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 }
 
 func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
-	var result *value
-	var err error
-
 	switch e := n.(type) {
 	case *ast.Boolean:
-		result, err = i.evaluateBoolean(e)
+		return i.evaluateBoolean(e)
 	case *ast.Number:
-		result, err = i.evaluateNumber(e)
+		return i.evaluateNumber(e)
 	case *ast.Text:
-		result, err = i.evaluateText(e)
+		return i.evaluateText(e)
 	case *ast.Array:
-		result, err = i.evaluateArray(e)
+		return i.evaluateArray(e)
 	case *ast.Variable:
-		result, err = i.evaluateVariable(e)
+		return i.evaluateVariable(e)
 	case *ast.Unary:
-		result, err = i.evaluateUnary(e)
+		return i.evaluateUnary(e)
 	case *ast.Binary:
-		result, err = i.evaluateBinary(e)
+		return i.evaluateBinary(e)
 	case *ast.Apply:
-		result, err = i.evaluateApply(e)
+		return i.evaluateApply(e)
 	}
 
-	return result, err
-}
-
-func (i *interpreter) executeDim(d *ast.Dim) error {
-	sz, err := i.evaluate(d.Size)
-	if err != nil {
-		return err
-	}
-	if !sz.isNumber() {
-		return fmt.Errorf("type error")
-	}
-
-	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
-	for i := 0; i < len(arr.array); i++ {
-		arr.array[i] = &value{}
-	}
-	i.env.set(d.Name, arr)
-	return nil
+	return nil, nil
 }
 
 func (i *interpreter) executeLet(l *ast.Let) error {
@@ -356,7 +387,10 @@ func (i *interpreter) executeInput(s *ast.Input) error {
 
 	fmt.Print("? ")
 	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("ներմուծման սխալ: %w", err)
+	}
 	line = strings.Trim(line, " \n\t\r")
 
 	switch line {
@@ -443,7 +477,11 @@ func (i *interpreter) executeFor(f *ast.For) error {
 	i.env.openScope()
 	defer i.env.closeScope()
 
-	param := f.Parameter.(*ast.Variable).Name
+	paramVar, ok := f.Parameter.(*ast.Variable)
+	if !ok {
+		return fmt.Errorf("FOR հրամանի պարամետրը պետք է լինի փոփոխական")
+	}
+	param := paramVar.Name
 	begin, err := i.evaluate(f.Begin)
 	if err != nil {
 		return err
@@ -490,46 +528,5 @@ func (i *interpreter) executeFor(f *ast.For) error {
 
 func (i *interpreter) executeCall(c *ast.Call) error {
 	_, err := i.evaluateApply(&ast.Apply{Callee: c.Callee, Arguments: c.Arguments})
-	return err
-}
-
-func (i *interpreter) executeSequence(s *ast.Sequence) error {
-	i.env.openScope()
-	defer i.env.closeScope()
-
-	for _, st := range s.Items {
-		err := i.execute(st)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (i *interpreter) execute(n ast.Statement) error {
-	var err error
-
-	switch s := n.(type) {
-	case *ast.Dim:
-		err = i.executeDim(s)
-	case *ast.Let:
-		err = i.executeLet(s)
-	case *ast.Input:
-		err = i.executeInput(s)
-	case *ast.Print:
-		err = i.executePrint(s)
-	case *ast.If:
-		err = i.executeIf(s)
-	case *ast.While:
-		err = i.executeWhile(s)
-	case *ast.For:
-		err = i.executeFor(s)
-	case *ast.Call:
-		err = i.executeCall(s)
-	case *ast.Sequence:
-		err = i.executeSequence(s)
-	}
-
 	return err
 }
