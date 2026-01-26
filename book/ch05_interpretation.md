@@ -450,31 +450,97 @@ func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
 type binary func(l, r *value) *value
 
 var operations = map[string]binary{
-	// երկտեղանի գործողությունները հաշվարկող ֆունկցաիները
-}
-```
-
-Ամբողջ աղյուսակն այստեղ չպատճենելու համար բերենք միայն `+`, `=` և `AND` գործողությունների օրինակները։
-
-```Go
-	// ...
+	// թվային գործողություններ
 	"+": func(l, r *value) *value {
 		return &value{kind: vNumber, number: l.number + r.number}
 	},
+	// ...
+	// համեմատումներ
 	"=": func(l, r *value) *value {
 		return &value{kind: vBoolean, boolean: eq(l, r)}
 	},
+	// ...
+	// տրամաբանական գործողություններ
 	"AND": func(l, r *value) *value {
 		return &value{kind: vBoolean, boolean: l.boolean && r.boolean}
 	},
 	// ...
+}
 ```
+
+Ամբողջ աղյուսակն այստեղ չպատճենելու համար բերել ենք միայն `+`, `=` և `AND` գործողությունների օրինակները։ Մյուսները նման են դրանց։
+
 
 `evaluateBinary()` մեթոդում հիշատակված `evaluateArithmetic()`, `evaluateTextConcatenation()`, `evaluateLogic()`, `evaluateIndexing` և `evaluateComparison` մեթոդներն էլ են կառուցված միևնույն սխեմայով։ Դրանք տարբերվում են միայն տիպերի ստուգման կտորներով։ 
 
 Նորից, տեքստը միօրինակությամբ չծանրաբեռնելու համար, այստեղ կցուցադրենք միայն `evaluateArithmetic()` և `evaluateIndexing()` մեթոդները։
 
+```Go
+func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
+	// հաշվարկել ձախ արգումենտը
+	left, err := i.evaluate(b.Left)
+	if err != nil {
+		return nil, err
+	}
+	// ստուգել տիպը
+	if !left.isNumber() {
+		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
+	}
 
+	// հաշվարկել աջ արգումենտը
+	right, err := i.evaluate(b.Right)
+	if err != nil {
+		return nil, err
+	}
+	// ստուգել տիպը
+	if !right.isNumber() {
+		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է թվային արժեք", b.Operation)
+	}
+
+	// երբ երկուսն էլ թիվ են՝ կատարել գործողությունը
+	return operations[b.Operation](left, right), nil
+}
+```
+
+Նույն կերպ `evaluateTextConcatenation()`-ում ստուգվում է, երկու արգումենտների արդյունքն էլ տեքստ լինի։ `evaluateLogic()`-ում ստուգվում է, որ երկու արգումենտն էլ տրամաբանական արժեքներ լինեն։ `evaluateComparison`-ում էլ ստուգվում է, որ երկու արգումենտները _համեմատելի_ արժեքներ լինեն։
+
+`evaluateIndexing()` մեթոդը հաշվում է զանգվածի՝ տրված ինդեքսով տարրի արժեքը։ Այս գործողության ձախ կողմը պետք է հաշվարկվի զանգված արդյունքով, իսկ աջ կողմը՝ թիվ արդյունքով։ Ուրեմն, նախ հաշվում ենք ձախ կողմը ու ստուգում ենք դրա տիպը։ Եթե այն զանգված չէ, ապա հաշվարկն ընդհատում ենք սխալի մասին ազդարարելով։
+
+
+```Go
+func (i *interpreter) evaluateIndexing(b *ast.Binary) (*value, error) {
+	left, err := i.evaluate(b.Left)
+	if err != nil {
+		return nil, err
+	}
+	if !left.isArray() {
+		return nil, fmt.Errorf("[]-ի ձախ կողմում պետք է զանգված լինի")
+	}
+```
+
+Հետո հաշվարկում ենք ինդեքսի արգումենտը ու ստուգում ենք, որ այն թիվ լինի։ Հակառակ դեպքում ինտերպրետացիան շարունակելն անիմաստ է. ազդարարում ենք հաշվարկման սխալիմասին։
+
+```Go
+	right, err := i.evaluate(b.Right)
+	if err != nil {
+		return nil, err
+	}
+	if !right.isNumber() {
+		return nil, fmt.Errorf("[]-ի ինդեքսը պետք է թիվ լինի")
+	}
+```
+
+Երբ ձախ արգումենտը զանգված է, իսկ աջն էլ թիվ է, պետք է ստուգենք որ այդ ինդեքսը զրոյից փոքր չլինի ու զանգվածի տարրերի քանակից էլ մեծ չլինի։ Երբ ամեն ինչ տեղն է, վերադարձնում ենք զանգվածի համապատասխան տարրը։
+
+```Go
+	index := int(right.number)
+	if index < 0 || index >= len(left.array) {
+		return nil, fmt.Errorf("ինդեքսը զանգվածի սահմաններից դուրս է")
+	}
+
+	return left.array[index], nil
+}
+```
 
 
 Դե, քանի որ հիշատակեցինք հրամանի կատարումը, իսկ `CALL`-ը հրաման է, հաջորդ ենթագլխում մանրամասն դիտարկենք հրամանների ինտերպրետացիան։

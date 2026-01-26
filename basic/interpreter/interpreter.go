@@ -167,116 +167,116 @@ func (i *interpreter) evaluateBinary(b *ast.Binary) (*value, error) {
 
 // թվաբանական գործողություններ
 func (i *interpreter) evaluateArithmetic(b *ast.Binary) (*value, error) {
-	rl, erl := i.evaluate(b.Left)
-	if erl != nil {
-		return nil, erl
-	}
-	if !rl.isNumber() {
-		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
-	}
-
-	rr, err := i.evaluate(b.Right)
+	left, err := i.evaluate(b.Left)
 	if err != nil {
 		return nil, err
 	}
-	if !rr.isNumber() {
+	if !left.isNumber() {
+		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է թվային արժեք", b.Operation)
+	}
+
+	right, err := i.evaluate(b.Right)
+	if err != nil {
+		return nil, err
+	}
+	if !right.isNumber() {
 		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է թվային արժեք", b.Operation)
 	}
 
-	return operations[b.Operation](rl, rr), nil
+	return operations[b.Operation](left, right), nil
 }
 
 // տեքստերի միակցում (կոնկատենացիա)
 func (i *interpreter) evaluateTextConcatenation(b *ast.Binary) (*value, error) {
-	rl, el := i.evaluate(b.Left)
-	if el != nil {
-		return nil, el
+	left, err := i.evaluate(b.Left)
+	if err != nil {
+		return nil, err
 	}
-	if !rl.isText() {
+	if !left.isText() {
 		return nil, fmt.Errorf("& գործողության ձախ կողմում սպասվում է տեքստային արժեք")
 	}
 
-	rr, er := i.evaluate(b.Right)
-	if er != nil {
-		return nil, er
+	right, err := i.evaluate(b.Right)
+	if err != nil {
+		return nil, err
 	}
-	if !rr.isText() {
+	if !right.isText() {
 		return nil, fmt.Errorf("& գործողության աջ կողմում սպասվում է տեքստային արժեք")
 	}
 
-	return &value{kind: vText, text: rl.text + rr.text}, nil
+	return &value{kind: vText, text: left.text + right.text}, nil
 }
 
 // տրամաբանական գործողություններ
 func (i *interpreter) evaluateLogic(b *ast.Binary) (*value, error) {
-	rl, err := i.evaluate(b.Left)
+	left, err := i.evaluate(b.Left)
 	if err != nil {
 		return nil, err
 	}
-	if !rl.isBoolean() {
+	if !left.isBoolean() {
 		return nil, fmt.Errorf("%s գործողության ձախ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
 	}
 
-	rr, err := i.evaluate(b.Right)
+	right, err := i.evaluate(b.Right)
 	if err != nil {
 		return nil, err
 	}
-	if !rr.isBoolean() {
+	if !right.isBoolean() {
 		return nil, fmt.Errorf("%s գործողության աջ կողմում սպասվում է տրամաբանական արժեք", b.Operation)
 	}
 
-	return operations[b.Operation](rl, rr), nil
+	return operations[b.Operation](left, right), nil
 }
 
 // զանգվածի ինդեքսավորման գործողություն
 func (i *interpreter) evaluateIndexing(b *ast.Binary) (*value, error) {
-	rl, el := i.evaluate(b.Left)
-	if el != nil {
-		return nil, el
+	left, err := i.evaluate(b.Left)
+	if err != nil {
+		return nil, err
 	}
-	if !rl.isArray() {
+	if !left.isArray() {
 		return nil, fmt.Errorf("[]-ի ձախ կողմում պետք է զանգված լինի")
 	}
 
-	rr, er := i.evaluate(b.Right)
-	if er != nil {
-		return nil, er
+	right, err := i.evaluate(b.Right)
+	if err != nil {
+		return nil, err
 	}
-	if !rr.isNumber() {
+	if !right.isNumber() {
 		return nil, fmt.Errorf("[]-ի ինդեքսը պետք է թիվ լինի")
 	}
 
-	ix := int(rr.number)
-	if ix < 0 || ix >= len(rl.array) {
+	ix := int(right.number)
+	if ix < 0 || ix >= len(left.array) {
 		return nil, fmt.Errorf("ինդեքսը զանգվածի սահմաններից դուրս է")
 	}
 
-	return rl.array[ix], nil
+	return left.array[ix], nil
 }
 
 // համեմատման գործողություններ
 func (i *interpreter) evaluateComparison(b *ast.Binary) (*value, error) {
-	rl, err := i.evaluate(b.Left)
+	left, err := i.evaluate(b.Left)
 	if err != nil {
 		return nil, err
 	}
-	if rl.isArray() {
+	if left.isArray() {
 		return nil, fmt.Errorf("զանգվածը չի կարող համեմատվել")
 	}
 
-	rr, err := i.evaluate(b.Right)
+	right, err := i.evaluate(b.Right)
 	if err != nil {
 		return nil, err
 	}
-	if rr.isArray() {
+	if right.isArray() {
 		return nil, fmt.Errorf("զանգվածը չի կարող համեմատվել")
 	}
 
-	if rl.kind != rr.kind {
+	if left.kind != right.kind {
 		return nil, fmt.Errorf("կարող են համեմատվել միայն նույն տիպի արժեքները")
 	}
 
-	return operations[b.Operation](rl, rr), nil
+	return operations[b.Operation](left, right), nil
 }
 
 // Արտահայտությունների ցուցակի հաշվարկելը
