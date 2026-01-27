@@ -5,7 +5,11 @@ import (
 	"strconv"
 )
 
-//type builtin = func(args ...*value) *value
+// type builtin = func(args ...*value) *value
+type builtin struct {
+	paramCount int
+	function   func(args ...*value) *value
+}
 
 var builtins = map[string]func(args ...*value) *value{
 	"LEN": func(args ...*value) *value {

@@ -121,7 +121,9 @@ func (i *interpreter) evaluateVariable(v *ast.Variable) (*value, error) {
 		return vp, nil
 	}
 
-	return nil, fmt.Errorf("անհայտ փոփոխական՝ %s", v.Name)
+	undefined := &value{kind: vUndefined}
+	i.env.set(v.Name, undefined)
+	return undefined, nil
 }
 
 func (i *interpreter) evaluateUnary(u *ast.Unary) (*value, error) {
@@ -304,15 +306,15 @@ func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.Ex
 		return nil, err
 	}
 
-	// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
-	for j, p := range subr.Parameters {
-		i.env.set(p, argValues[j])
-	}
-
 	// ենթածրագրի մարմնի կատարում
 	i.env.openScope() // նոր տիրույթ
 	defer i.env.closeScope()
 	i.env.set(subr.Name, &value{kind: vUndefined})
+
+	// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
+	for j, p := range subr.Parameters {
+		i.env.set(p, argValues[j].clone())
+	}
 
 	err = i.execute(subr.Body)
 	if err != nil {
@@ -375,7 +377,7 @@ func (i *interpreter) executeLet(l *ast.Let) error {
 		return err
 	}
 
-	*p = *v
+	*p = *v.clone()
 	return nil
 }
 

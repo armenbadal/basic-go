@@ -1,6 +1,3 @@
-SUB Show(a)
-    PRINT a
-END SUB
 
 SUB Negate(ar)
     FOR i = 0 TO LEN(ar) - 1
@@ -15,12 +12,12 @@ SUB Main
     LET a[1] = 8
     LET a[2] = 7
     LET a[3] = 6
-    CALL Show a
-    CALL Show Negate(a)
-    CALL Show a
+    PRINT a
+    PRINT Negate(a)
+    PRINT a
 
     LET b = [1, 2, 3]
-    CALL Show -b[0]
+    PRINT -b[0]
 
     PRINT "Ok"
 
