@@ -295,8 +295,8 @@ func (i *interpreter) evaluateExpressionList(es []ast.Expression) ([]*value, err
 }
 
 // Օգտագործողի սահմանած ենթապրագրի կանչի կատարումը
-func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.Expression) (*value, error) {
-	if len(args) != len(subr.Parameters) {
+func (i *interpreter) evaluateSubroutineCall(subroutine *ast.Subroutine, args []ast.Expression) (*value, error) {
+	if len(args) != len(subroutine.Parameters) {
 		return nil, fmt.Errorf("կիրառության արգումենտների և ենթածրագրի պարամետրերի քանակները հավասար չեն")
 	}
 
@@ -309,26 +309,26 @@ func (i *interpreter) evaluateSubroutineCall(subr *ast.Subroutine, args []ast.Ex
 	// ենթածրագրի մարմնի կատարում
 	i.env.openScope() // նոր տիրույթ
 	defer i.env.closeScope()
-	i.env.set(subr.Name, &value{kind: vUndefined})
+	i.env.set(subroutine.Name, &value{kind: vUndefined})
 
 	// ենթածրագրի պարամետրերի համապատասխանեցումը կանչի արգումենտներին
-	for j, p := range subr.Parameters {
+	for j, p := range subroutine.Parameters {
 		i.env.set(p, argValues[j].clone())
 	}
 
-	err = i.execute(subr.Body)
+	err = i.execute(subroutine.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	result := i.env.get(subr.Name)
+	result := i.env.get(subroutine.Name)
 	return result, nil
 }
 
 func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 	// ծրագրավորողի սահմանած ենթածրագրի կանչ
-	if subr, exists := i.program.Subroutines[a.Callee]; exists {
-		return i.evaluateSubroutineCall(subr, a.Arguments)
+	if subroutine, exists := i.program.Subroutines[a.Callee]; exists {
+		return i.evaluateSubroutineCall(subroutine, a.Arguments)
 	}
 
 	// ներդրված ենթածրագրի կանչ
