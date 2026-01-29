@@ -34,6 +34,29 @@ func Execute(p *ast.Program) error {
 	return i.executeCall(&cmain)
 }
 
+func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
+	switch e := n.(type) {
+	case *ast.Boolean:
+		return i.evaluateBoolean(e)
+	case *ast.Number:
+		return i.evaluateNumber(e)
+	case *ast.Text:
+		return i.evaluateText(e)
+	case *ast.Array:
+		return i.evaluateArray(e)
+	case *ast.Variable:
+		return i.evaluateVariable(e)
+	case *ast.Unary:
+		return i.evaluateUnary(e)
+	case *ast.Binary:
+		return i.evaluateBinary(e)
+	case *ast.Apply:
+		return i.evaluateApply(e)
+	}
+
+	return nil, nil
+}
+
 func (i *interpreter) execute(n ast.Statement) error {
 	switch s := n.(type) {
 	case *ast.Sequence:
@@ -55,38 +78,6 @@ func (i *interpreter) execute(n ast.Statement) error {
 	case *ast.Call:
 		return i.executeCall(s)
 	}
-
-	return nil
-}
-
-func (i *interpreter) executeSequence(s *ast.Sequence) error {
-	i.env.openScope()
-	defer i.env.closeScope()
-
-	for _, st := range s.Items {
-		err := i.execute(st)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (i *interpreter) executeDim(d *ast.Dim) error {
-	sz, err := i.evaluate(d.Size)
-	if err != nil {
-		return err
-	}
-	if !sz.isNumber() {
-		return fmt.Errorf("Զանգվածի չափը պետք է թիվ լինի")
-	}
-
-	arr := &value{kind: vArray, array: make([]*value, int(sz.number))}
-	for i := 0; i < len(arr.array); i++ {
-		arr.array[i] = &value{}
-	}
-	i.env.set(d.Name, arr)
 
 	return nil
 }
@@ -343,31 +334,40 @@ func (i *interpreter) evaluateApply(a *ast.Apply) (*value, error) {
 	return nil, fmt.Errorf("%s. անծանոթ ենթածրագրի կիրառություն", a.Callee)
 }
 
-func (i *interpreter) evaluate(n ast.Expression) (*value, error) {
-	switch e := n.(type) {
-	case *ast.Boolean:
-		return i.evaluateBoolean(e)
-	case *ast.Number:
-		return i.evaluateNumber(e)
-	case *ast.Text:
-		return i.evaluateText(e)
-	case *ast.Array:
-		return i.evaluateArray(e)
-	case *ast.Variable:
-		return i.evaluateVariable(e)
-	case *ast.Unary:
-		return i.evaluateUnary(e)
-	case *ast.Binary:
-		return i.evaluateBinary(e)
-	case *ast.Apply:
-		return i.evaluateApply(e)
+func (i *interpreter) executeSequence(s *ast.Sequence) error {
+	i.env.openScope()
+	defer i.env.closeScope()
+
+	for _, st := range s.Items {
+		err := i.execute(st)
+		if err != nil {
+			return err
+		}
 	}
 
-	return nil, nil
+	return nil
+}
+
+func (i *interpreter) executeDim(d *ast.Dim) error {
+	size, err := i.evaluate(d.Size)
+	if err != nil {
+		return err
+	}
+	if !size.isNumber() {
+		return fmt.Errorf("Զանգվածի չափը պետք է թիվ լինի")
+	}
+
+	array := &value{kind: vArray, array: make([]*value, int(size.number))}
+	for i := 0; i < len(array.array); i++ {
+		array.array[i] = &value{}
+	}
+	i.env.set(d.Name, array)
+
+	return nil
 }
 
 func (i *interpreter) executeLet(l *ast.Let) error {
-	p, err := i.evaluate(l.Place)
+	place, err := i.evaluate(l.Place)
 	if err != nil {
 		return err
 	}
@@ -377,17 +377,17 @@ func (i *interpreter) executeLet(l *ast.Let) error {
 		return err
 	}
 
-	*p = *v.clone()
+	*place = *v.clone()
 	return nil
 }
 
 func (i *interpreter) executeInput(s *ast.Input) error {
-	pl, err := i.evaluate(s.Place)
+	place, err := i.evaluate(s.Place)
 	if err != nil {
 		return err
 	}
 
-	fmt.Print("? ")
+	fmt.Print("? ") // ներմուծման հրավերքը
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
 	if err != nil {
@@ -397,15 +397,15 @@ func (i *interpreter) executeInput(s *ast.Input) error {
 
 	switch line {
 	case "TRUE":
-		*pl = value{kind: vBoolean, boolean: true}
+		*place = value{kind: vBoolean, boolean: true}
 	case "FALSE":
-		*pl = value{kind: vBoolean, boolean: false}
+		*place = value{kind: vBoolean, boolean: false}
 	default:
 		num, err := strconv.ParseFloat(line, 64)
 		if err == nil {
-			*pl = value{kind: vNumber, number: num}
+			*place = value{kind: vNumber, number: num}
 		} else {
-			*pl = value{kind: vText, text: line}
+			*place = value{kind: vText, text: line}
 		}
 	}
 
@@ -422,18 +422,15 @@ func (i *interpreter) executePrint(p *ast.Print) error {
 }
 
 func (i *interpreter) executeIf(b *ast.If) error {
-	i.env.openScope()
-	defer i.env.closeScope()
-
-	cond, err := i.evaluate(b.Condition)
+	condition, err := i.evaluate(b.Condition)
 	if err != nil {
 		return err
 	}
-	if !cond.isBoolean() {
+	if !condition.isBoolean() {
 		return fmt.Errorf("IF հրամանի պայմանը պետք է լինի տրամաբանական արժեք")
 	}
 
-	if cond.boolean {
+	if condition.boolean {
 		err := i.execute(b.Decision)
 		if err != nil {
 			return err
@@ -451,19 +448,16 @@ func (i *interpreter) executeIf(b *ast.If) error {
 }
 
 func (i *interpreter) executeWhile(w *ast.While) error {
-	i.env.openScope()
-	defer i.env.closeScope()
-
 	for {
-		cond, err := i.evaluate(w.Condition)
+		condition, err := i.evaluate(w.Condition)
 		if err != nil {
 			return err
 		}
-		if !cond.isBoolean() {
+		if !condition.isBoolean() {
 			return fmt.Errorf("WHILE հրամանի պայմանը պետք է տրամաբանական արժեք լինի")
 		}
 
-		if !cond.boolean {
+		if !condition.boolean {
 			break
 		}
 

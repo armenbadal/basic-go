@@ -684,17 +684,9 @@ var builtins = map[string]func(args ...*value) *value{
 ```
 
 
-Դե, քանի որ հիշատակեցինք հրամանի կատարումը, իսկ `CALL`-ը հրաման է, հաջորդ ենթագլխում մանրամասն դիտարկենք հրամանների ինտերպրետացիան։
-
-
 ## Հրամանների կատարումը
 
-Ղեկավարող կառուցվածքներում, ենթածրագրի մարմնում հրամանները հիշատակվում են որպես `Statement`: Սա ինտերֆեյս է՝ համարժեք Գոի `any`-ին։ Հետևաբար `interpreter` ստրուկտուրան պիտի մի ճյուղավորող մեթոդ ունենա, որը, ընտրություն կատարելով կոնկրետ հրամանի տիպի համար, կանչի համապատսխան ինտերպրետացնող մեթոդը։ Ոչ մի բարդ բան.
-
-
-Հիմա արդեն, բոլոր այն տեղերում, որտեղ պետք է հրամանի ինտերպրետացիա, կարող ենք կանչել այս `execute()` մեթոդը և վստահ լինել, որ կատարումը կգնա ճիշտ ուղղով։
-
-__Հաջորդման կատարումը։__ `Sequence` կառուցվածքի կատարում, ինչպես և դրա վերլուծությունն էր, շատ պարզ է. հերթվ անցնում ենք հաջորդականության անդամներով, ու ամեն մեկին կիրառում ենք `execute()` մեթոդը։ Բայց, միչև դա, ստեղծում են նոր տեսանելիության տիրույթ։
+__Հաջորդման կատարումը։__ `Sequence` կառուցվածքի կատարումը, ինչպես և դրա վերլուծությունն էր, շատ պարզ է. հերթով անցնում ենք հաջորդականության անդամներով ու ամեն մեկին կիրառում ենք `execute()` մեթոդը։ Բայց, միչև դա, ստեղծում են նոր տեսանելիության տիրույթ։
 
 ```Go
 func (i *interpreter) executeSequence(s *ast.Sequence) error {
@@ -712,9 +704,178 @@ func (i *interpreter) executeSequence(s *ast.Sequence) error {
 }
 ```
 
-__Զանգվածի ստեղծում։__ `DIM` հրամանով զանգված ստեղծելու համար 
+__Զանգվածի ստեղծում։__ `DIM` հրամանով զանգված ստեղծելու համար նախ հաշվարկում ենք չափը որոշող արտահայտությունը և ստուգում ենք, որ արժեքի տիպ թվային լինի։
 
+```Go
+func (i *interpreter) executeDim(d *ast.Dim) error {
+	size, err := i.evaluate(d.Size)
+	if err != nil {
+		return err
+	}
+	if !size.isNumber() {
+		return fmt.Errorf("Զանգվածի չափը պետք է թիվ լինի")
+	}
+```
 
-Ինչպես արդեն տեսանք աբստրակտ քերականական ծառի նկարագրության գլխում, արտահայտությունների տարատեսակները ներկայացնող հանգույցների տիպերն ութն են. `Boolean`, `Number`, `Text` և `Array` — լիտերալների համար, `Unary` և `Binary` — միտեղանի ու երկտեղանի գործողությունների համար և `Apply` — ենթածրագիր-ֆունկցիաների կիրառության համար։ Արտահայտության տրված ենթածառի տիպը տարբերակվում և համապատասխան հաշվարկող ֆունկցիան կանչվում է `evaluate` ֆունկցիայում.
+Հետո ստեղծում ենք `vArray` տեսակով նոր `value` օբյեկտ, դրա `array` դաշտը լրացնում ենք պահաջվող չափի դատարկ `value` օբյեկտներով։
 
+```Go
+	array := &value{kind: vArray, array: make([]*value, int(size.number))}
+	for i := 0; i < len(array.array); i++ {
+		array.array[i] = &value{}
+	}
+```
 
+Եվ կատարման միջավայրում նոր կապ ենք ստեղծում զանգվածի անվան ու մեր կառուցած օբյեկտի միջև։
+
+```Go
+	i.env.set(d.Name, array)
+
+	return nil
+}
+```
+
+__Վերագրում։__ `LET` հրամանը կարողանում է արժեք վերագրել ինչպես սովորական փոփոխականներին, այնպես էլ զանգվածի տարրերին։ Սկզբում հաշվարկվում է վերագրման _տեղը_ որոշող արտահայտությունը։ Ըստ քերականության, սա կարող է լինել կա՛մ `IDENT`, կա՛մ `IDENT '[' Expression ']'`:
+
+```Go
+func (i *interpreter) executeLet(l *ast.Let) error {
+	place, err := i.evaluate(l.Place)
+	if err != nil {
+		return err
+	}
+```
+
+Փոփոխականի հաշվարկման `evaluateVaraile()` մեթոդում նշեցինք, որ երբ պարզվում է կատարման միջավայրում որոնելի անվան բացակայությունը, ապա, անմիջապես սխալի մասին հաղորդելու փոխարեն, այնտեղ ավելացնում ենք նոր `vUndefined` տեսակի արժեք։ Այդ հնարքն ապահովում է, որ վերագրման հրամանի ձախ կողմը՝ վերագրման տեղը, հաշվելիս միշտ ունենանք վավեր հասցե։
+
+Հետո հաշվարկում ենք վերագրվող արժեքը՝ `=` նշանի աջ կողմում գրված արտահայտությունը։
+
+```Go
+	v, err := i.evaluate(l.Value)
+	if err != nil {
+		return err
+	}
+```
+
+Վերջում հաշվարկված արժեքը _պատճենում_ ենք վերագրման տեղում։
+
+```Go
+	*place = *v.clone()
+	return nil
+}
+```
+
+__Տվյալների ներմուծում։__ `INPUT` հրամանն ինտերպրետացիայով շատ նման է վերագրման հրամանին։ Այս դեպքում էլ է նախ հաշվարտվում փոփոխականը, որով որոշվում է ներմուծված արժեքը պահելու տեղը։
+
+```Go
+func (i *interpreter) executeInput(s *ast.Input) error {
+	place, err := i.evaluate(s.Place)
+	if err != nil {
+		return err
+	}
+```
+
+Հետո արտածվում է ներմուծման հրավերքը, ու ներմուծման ստանդարտ հոսքից կարդացվում է մի տող։
+
+```Go
+	fmt.Print("? ") // ներմուծման հրավերքը
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("ներմուծման սխալ: %w", err)
+	}
+	line = strings.Trim(line, " \n\t\r")
+```
+
+Հաջորդիվ փորձում ենք հասկանալ, թե այդ ներմուծված տողը մեր երեք տիպերից որի մնուշ է։ `TRUE` և `FALSE` բառերը մեկնաբանվում են որպես տրամաբանական արժեքներ։ Մյուս դեքպում, եթե հաջողվում է `strconv.ParseFloat()` ֆունկցիայով կարդացված տեղից թիվ ստանալ, ապա ստեղծում ենք `vNumber` տեսակի արժեք։ Հակառակ դեպքում համարում ենք, որ ներմուծվածը տեքստ է՝ `vText` տիպի արժեք։
+
+```Go
+	switch line {
+	case "TRUE":
+		*place = value{kind: vBoolean, boolean: true}
+	case "FALSE":
+		*place = value{kind: vBoolean, boolean: false}
+	default:
+		num, err := strconv.ParseFloat(line, 64)
+		if err == nil {
+			*place = value{kind: vNumber, number: num}
+		} else {
+			*place = value{kind: vText, text: line}
+		}
+	}
+
+	return nil
+}
+```
+
+__Տվյալների արտածում։__ `PRINT`-ի կատարումն այնքան պարզ է, որ կբերենք միայն համապատասխան մեթոդի տեքստը, առանց ավելորդ մեկնաբանությունների։
+
+```Go
+func (i *interpreter) executePrint(p *ast.Print) error {
+	str, err := i.evaluate(p.Value)
+	if err != nil {
+		return err
+	}
+	fmt.Println(str)
+	return nil
+}
+```
+
+__Ճյուղավորում։__ `IF` հրամանը թեև կառուցվածքով բարդ է, սակայն նրա ինտերպրետացիան շատ պարզ քայլեր ունի։ Նախ հաշվարկում ենք պայմանը ու ստուգում ենք, որ այն ունենա տրամաբանական արժեք։
+
+```Go
+func (i *interpreter) executeIf(b *ast.If) error {
+	condition, err := i.evaluate(b.Condition)
+	if err != nil {
+		return err
+	}
+	if !condition.isBoolean() {
+		return fmt.Errorf("IF հրամանի պայմանը պետք է լինի տրամաբանական արժեք")
+	}
+```
+
+Պայմանի _ճշմարիտ_ արժեքի դեպքում կատարում ենք `Decision` բլոկը։ _Կեղծ_ արժեքի դեպքում՝ `Alternative` բլոկը, եթե այն առկա է։
+
+```Go
+	if condition.boolean {
+		err := i.execute(b.Decision)
+		if err != nil {
+			return err
+		}
+	} else {
+		if b.Alternative != nil {
+			err := i.execute(b.Alternative)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+```
+
+__Նախապայմանով կրկնություն։__
+
+```Go
+func (i *interpreter) executeWhile(w *ast.While) error {
+	for {
+		condition, err := i.evaluate(w.Condition)
+		if err != nil {
+			return err
+		}
+		if !condition.isBoolean() {
+			return fmt.Errorf("WHILE հրամանի պայմանը պետք է տրամաբանական արժեք լինի")
+		}
+
+		if !condition.boolean {
+			break
+		}
+
+		if err := i.execute(w.Body); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+```
