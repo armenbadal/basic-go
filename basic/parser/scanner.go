@@ -157,7 +157,7 @@ func (s *scanner) scanIdentifierOrKeyword() *lexeme {
 	return &lexeme{kw, s.text, s.line}
 }
 
-// մետասիմվոլներ․ գորողություններ, կետադրություն
+// մետասիմվոլներ. գորողություններ, կետադրություն
 var metasymbols = map[rune]token{
 	'+':  xAdd,
 	'-':  xSub,
