@@ -339,8 +339,7 @@ func (i *interpreter) executeSequence(s *ast.Sequence) error {
 	defer i.env.closeScope()
 
 	for _, st := range s.Items {
-		err := i.execute(st)
-		if err != nil {
+		if err := i.execute(st); err != nil {
 			return err
 		}
 	}
@@ -431,14 +430,12 @@ func (i *interpreter) executeIf(b *ast.If) error {
 	}
 
 	if condition.boolean {
-		err := i.execute(b.Decision)
-		if err != nil {
+		if err := i.execute(b.Decision); err != nil {
 			return err
 		}
 	} else {
 		if b.Alternative != nil {
-			err := i.execute(b.Alternative)
-			if err != nil {
+			if err := i.execute(b.Alternative); err != nil {
 				return err
 			}
 		}
@@ -470,9 +467,6 @@ func (i *interpreter) executeWhile(w *ast.While) error {
 }
 
 func (i *interpreter) executeFor(f *ast.For) error {
-	i.env.openScope()
-	defer i.env.closeScope()
-
 	paramVar, ok := f.Parameter.(*ast.Variable)
 	if !ok {
 		return fmt.Errorf("FOR հրամանի պարամետրը պետք է լինի փոփոխական")
@@ -505,14 +499,11 @@ func (i *interpreter) executeFor(f *ast.For) error {
 
 	for {
 		pv := i.env.get(param)
-		if step.number > 0 && pv.number > end.number {
-			break
-		} else if step.number < 0 && pv.number < end.number {
+		if (step.number > 0 && pv.number > end.number) || (step.number < 0 && pv.number < end.number) {
 			break
 		}
 
-		err := i.execute(f.Body)
-		if err != nil {
+		if err := i.execute(f.Body); err != nil {
 			return err
 		}
 
@@ -523,6 +514,6 @@ func (i *interpreter) executeFor(f *ast.For) error {
 }
 
 func (i *interpreter) executeCall(c *ast.Call) error {
-	_, err := i.evaluateApply(&ast.Apply{Callee: c.Callee, Arguments: c.Arguments})
+	_, err := i.evaluateApply((*ast.Apply)(c))
 	return err
 }
