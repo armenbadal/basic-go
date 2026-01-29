@@ -933,7 +933,8 @@ func (i *interpreter) executeFor(f *ast.For) error {
 ```Go
 	for {
 		pv := i.env.get(param)
-		if (step.number > 0 && pv.number > end.number) || (step.number < 0 && pv.number < end.number) {
+		if (step.number > 0 && pv.number > end.number) ||
+		   (step.number < 0 && pv.number < end.number) {
 			break
 		}
 
@@ -957,4 +958,4 @@ func (i *interpreter) executeCall(c *ast.Call) error {
 }
 ```
 
-Նկատենք, որ `*ast.Call` տիպի ցուցիչը փոխակերպվում է `*ast.Apply` տիպի ցուցիչի՝ օգտագործելով Գո լեզվի տիպերի փոխակերպման հնարավորությունը։ Սա հնարավոր է, քանի որ աբստրակտ քերականական ծառի հանգույցների համար `Call`-ը սահմանված է տեսքով `type Call Apply`։
+Նկատենք, որ `*ast.Call` տիպի ցուցիչը փոխակերպվում է `*ast.Apply` տիպի ցուցիչի՝ օգտագործելով Գո լեզվի տիպերի փոխակերպման հնարավորությունը։ Սա հնարավոր է, քանի որ աբստրակտ քերականական ծառի հանգույցների համար `Call`-ը սահմանված է `type Call Apply` տեսքով։
