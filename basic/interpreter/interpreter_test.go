@@ -47,12 +47,12 @@ func TestArray(t *testing.T) {
 }
 
 func TestVariable(t *testing.T) {
-	interp := &interpreter{}
-	interp.env.openScope()
-	interp.env.set("x", &value{kind: vBoolean, boolean: true})
+	i := &interpreter{program: nil, env: &environment{}}
+	i.env.openScope()
+	i.env.set("x", &value{kind: vBoolean, boolean: true})
 
 	v0 := &ast.Variable{Name: "x"}
-	r0, _ := interp.evaluate(v0)
+	r0, _ := i.evaluate(v0)
 	if r0.kind != vBoolean || !r0.boolean {
 		t.Error("Failed to evaluate variable object")
 	}
@@ -61,15 +61,40 @@ func TestVariable(t *testing.T) {
 func TestUnary(t *testing.T) {
 	b0 := &ast.Boolean{Value: false}
 	u0 := &ast.Unary{Operation: "NOT", Right: b0}
-	r0, _ := (&interpreter{}).evaluate(u0)
+	i := &interpreter{program: nil, env: &environment{}}
+	i.env.openScope()
+	r0, _ := i.evaluate(u0)
 	if r0.kind != vBoolean || !r0.boolean {
 		t.Error("Failed to evaluate unary object")
 	}
 
 	n1 := &ast.Number{Value: 3.1415}
 	u1 := &ast.Unary{Operation: "-", Right: n1}
-	r1, _ := (&interpreter{}).evaluate(u1)
+	r1, _ := i.evaluate(u1)
 	if r1.kind != vNumber || r1.number != -3.1415 {
 		t.Error("Failed to evaluate unary object")
+	}
+}
+
+func TestLet(t *testing.T) {
+	a0 := &ast.Array{Elements: make([]ast.Expression, 3)}
+	a0.Elements[0] = &ast.Boolean{Value: false}
+	a0.Elements[1] = &ast.Number{Value: 3.1415}
+	a0.Elements[2] = &ast.Text{Value: "Hello"}
+
+	v0 := &ast.Variable{Name: "x"}
+	v1 := &ast.Variable{Name: "y"}
+
+	l0 := &ast.Let{Place: v0, Value: a0}
+	l1 := &ast.Let{Place: v1, Value: v0}
+
+	i := &interpreter{program: nil, env: &environment{}}
+	i.env.openScope()
+
+	_ = i.execute(l0)
+	_ = i.execute(l1)
+
+	if i.env.get(v0.Name) == i.env.get(v1.Name) {
+		t.Error("օբյեկտները չեն պատճենվել")
 	}
 }
