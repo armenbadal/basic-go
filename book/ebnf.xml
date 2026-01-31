@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language name="ebnf" version="1" kateversion="5.0" section="Sources" extensions="*.ebnf" mimetype="text/x-ebnf" author="Armen Badalian" license="MIT">
+    <highlighting>
+        <list name="operators">
+            <item>=</item>
+            <item>|</item>
+            <item>.</item>
+        </list>
+
+        <list name="brackets">
+            <item>(</item>
+            <item>)</item>
+            <item>[</item>
+            <item>]</item>
+            <item>{</item>
+            <item>}</item>
+        </list>
+
+        <contexts>
+            <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <RegExpr attribute="NonTerminal" context="#stay" String="\b[A-Z][A-Za-z0-9]*\b(?=\s*=)" />
+                <RegExpr attribute="Predefined Terminal" context="#stay" String="\b[A-Z][A-Z0-9_]*\b" />
+                <RegExpr attribute="NonTerminal" context="#stay" String="\b[A-Z][a-zA-Z0-9]*\b" />
+                <RegExpr attribute="Identifier" context="#stay" String="\b[a-z][A-Za-z0-9]*\b" />
+                <DetectChar attribute="Terminal" char="'" context="Terminal" />
+                <keyword attribute="Operator" context="#stay" String="operators" />
+                <keyword attribute="Bracket" context="#stay" String="brackets" />
+            </context>
+            <context name="Terminal" attribute="Terminal" lineEndContext="#stay">
+                <DetectChar attribute="Terminal" char="'" context="#pop" />
+            </context>
+        </contexts>
+
+        <itemDatas>
+            <itemData name="Normal Text" defStyleNum="dsNormal" />
+            <itemData name="Terminal" defStyleNum="dsString" />
+            <itemData name="Number" defStyleNum="dsDecVal" />
+            <itemData name="Operator" defStyleNum="dsOperator" />
+            <itemData name="Bracket" defStyleNum="dsOperator" />
+            <itemData name="Identifier" defStyleNum="dsIdentifier" />
+            <itemData name="NonTerminal" defStyleNum="dsFunction" />
+            <itemData name="Predefined Terminal" defStyleNum="dsString" />
+        </itemDatas>
+    </highlighting>
+
+    <general>
+    </general>
+</language>

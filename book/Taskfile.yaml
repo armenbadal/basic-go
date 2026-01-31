@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  GREETING: Hello, world!
+
+tasks:
+  default:
+    desc: Print a greeting message
+    cmds:
+      - |
+        pandoc \
+        ch01_introduction.md \
+        ch02_language.md \
+        ch03_astree.md \
+        ch04_parsing.md \
+        ch05_interpretation.md \
+        ch06_exercises.md \
+        ch08_bibliography.md \
+        --standalone \
+        --syntax-definition=bal.xml \
+        --syntax-definition=ebnf.xml \
+        --syntax-highlighting=tango \
+        --pdf-engine=xelatex \
+        --template=book-template.latex \
+        --top-level-division=chapter \
+        --output book_draft.pdf
+    silent: true
