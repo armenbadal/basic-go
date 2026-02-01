@@ -9,21 +9,25 @@
 \usepackage{hyperref}
 \usepackage{fancyvrb}
 \usepackage{makeidx}
-%\usepackage[Conny]{fncychap}
+\usepackage[Conny]{fncychap}
 \usepackage{setspace}
 \usepackage{longtable,booktabs,array}
 \usepackage{calc}
 \usepackage{etoolbox}
 \usepackage{framed}
+\usepackage{polyglossia}
 
-\setmainfont[Ligatures=TeX,HyphenChar="058A]{GHEAMariam}
-\setsansfont[Ligatures=TeX,HyphenChar="058A]{GHEAGrapalat}
+\setdefaultlanguage[numerals=arabic]{armenian}
+
+\setmainfont[Ligatures=TeX,HyphenChar="058A]{GHEA Mariam}
+\setsansfont[Ligatures=TeX,HyphenChar="058A]{GHEA Grapalat}
 \setmonofont{DejaVu Sans Mono}
 
-\newfontfamily\titlefont{Arm Hmk's Bebas Neue}
+\newfontfamily\armenianfont[Ligatures=TeX,HyphenChar="058A]{GHEA Mariam}
+\newfontfamily\armenianfontsf[Ligatures=TeX,HyphenChar="058A]{GHEA Grapalat}
+\newfontfamily\armenianfonttt[Scale=MatchLowercase]{DejaVu Sans Mono}
 
-\defaultfontfeatures{Scale=MatchLowercase}
-\defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\newfontfamily\titlefont{Arm Hmk's Bebas Neue}
 
 \renewcommand{\chaptername}{Գլուխ}
 \renewcommand{\contentsname}{Բովանդակություն}
@@ -33,7 +37,7 @@
 \renewcommand{\bibname}{Գրականություն}
 \renewcommand{\indexname}{Առարկայական ցանկ}
 
-\tolerance=1500
+\tolerance=2500
 \linespread{1.2}
 \frenchspacing
 
@@ -55,6 +59,9 @@
 \fi ի~\number\year}
 
 $common.latex()$
+
+\AtBeginEnvironment{Verbatim}{\small\setstretch{1.0}}
+\AtBeginEnvironment{Highlighting}{\small\setstretch{1.0}}
 
 \begin{document}
 

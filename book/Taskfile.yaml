@@ -2,12 +2,9 @@
 
 version: '3'
 
-vars:
-  GREETING: Hello, world!
-
 tasks:
   default:
-    desc: Print a greeting message
+    desc: build the book draft PDF
     cmds:
       - |
         pandoc \
@@ -26,4 +23,4 @@ tasks:
         --template=book-template.latex \
         --top-level-division=chapter \
         --output book_draft.pdf
-    silent: true
+
